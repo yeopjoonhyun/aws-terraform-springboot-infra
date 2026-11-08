@@ -19,3 +19,10 @@
 - 막힌 것: 이 계정은 Builder ID 기반이라 콘솔 메뉴에 "보안 자격 증명"이 없었다. 프로필 관리 화면에서 MFA가 이미 등록된 것을 확인했다.
 - 배운 것: IAM 사용자는 고정 신분증, 역할은 잠깐 빌리는 권한 묶음이다. `terraform plan`은 실제로 만들지 않고 변경 계획만 보여준다.
 - 다음 할 일: `terraform apply`로 VPC 생성 확인 후 `destroy`, 서브넷과 인터넷 게이트웨이 추가
+
+### 트러블슈팅: apply 실패 (SCP explicit deny)
+- 증상: `terraform apply` 시 `UnauthorizedOperation ... with an explicit deny in a service control policy` (ec2:CreateVpc). `aws ec2 describe-vpcs` 같은 읽기 요청도 같은 이유로 거부됨.
+- 원인: 이 계정은 AWS Organizations 소속이고, 조직 수준의 SCP(서비스 제어 정책)가 EC2 작업을 명시적으로 거부한다. IAM 사용자에게 `AdministratorAccess`가 있어도 SCP의 explicit deny는 이길 수 없다. (권한 평가에서 explicit deny가 항상 우선)
+- 확인한 것: IAM 사용자 생성은 가능했고, `sts get-caller-identity`도 정상. 즉 자격 증명 문제가 아니라 계정 정책 문제.
+- 배운 것: `terraform plan`은 코드 문법과 계획만 확인할 뿐 권한은 검증하지 않는다. 권한 문제는 `apply` 시점에야 드러난다.
+- 다음 할 일: 무료 플랜의 서비스 제한 범위 확인, 플랜 업그레이드 여부 결정
