@@ -24,7 +24,7 @@ brew install hashicorp/tap/terraform awscli gh
 - [x] 로그인 계정 MFA 설정 (Builder ID 기반 계정, TOTP 인증 앱)
 - [ ] AWS Budgets 월 예산 알림 설정
 - [x] 작업용 IAM 사용자 생성 (`terraform-admin`, 현재 AdministratorAccess)
-- [x] `aws configure`로 CLI 연결 (리전: ap-northeast-2)
+- [x] `aws configure`로 CLI 연결 (리전: ap-southeast-2. 서울은 조직 SCP로 EC2 거부)
 - [x] `aws sts get-caller-identity`로 연결 확인
 
 ## 메모

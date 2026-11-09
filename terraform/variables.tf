@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "리소스를 만들 AWS 리전"
   type        = string
-  default     = "ap-northeast-2" # 서울
+  default     = "ap-southeast-2" # 시드니 (이 계정에서 EC2가 허용된 리전)
 }
 
 variable "project_name" {
