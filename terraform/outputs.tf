@@ -8,6 +8,15 @@ output "subnet_ids" {
   value       = { for k, s in aws_subnet.this : k => s.id }
 }
 
+output "security_group_ids" {
+  description = "보안 그룹 ID (alb, app, db)"
+  value = {
+    alb = aws_security_group.alb.id
+    app = aws_security_group.app.id
+    db  = aws_security_group.db.id
+  }
+}
+
 output "internet_gateway_id" {
   description = "인터넷 게이트웨이 ID"
   value       = aws_internet_gateway.main.id

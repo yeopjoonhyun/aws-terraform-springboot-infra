@@ -10,6 +10,18 @@ variable "project_name" {
   default     = "aws-tf-springboot"
 }
 
+variable "app_port" {
+  description = "Spring Boot 앱이 듣는 포트"
+  type        = number
+  default     = 8080
+}
+
+variable "db_port" {
+  description = "DB 포트 (MySQL 기준)"
+  type        = number
+  default     = 3306
+}
+
 variable "vpc_cidr" {
   description = "VPC의 IP 주소 범위"
   type        = string
