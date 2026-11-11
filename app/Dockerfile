@@ -10,11 +10,13 @@ COPY src ./src
 RUN gradle bootJar --no-daemon -x test
 
 # ---------- 2단계: 실행 (JRE만 포함해 이미지를 작게 유지) ----------
-FROM eclipse-temurin:21-jre
+# Alpine 기반: Ubuntu 기반(583MB)보다 작고, OS 패키지 취약점이 가장 적었다.
+# (Ubuntu/Alpine/Distroless를 Trivy로 비교한 결과는 docs/03-app-docker.md 참고)
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # root가 아닌 일반 사용자로 실행해 컨테이너가 뚫려도 피해를 줄인다.
-RUN useradd --system --no-create-home appuser
+RUN addgroup -S appuser && adduser -S -G appuser appuser
 USER appuser
 
 COPY --from=build /workspace/build/libs/*.jar app.jar
