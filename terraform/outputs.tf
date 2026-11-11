@@ -26,3 +26,8 @@ output "vpc_cidr" {
   description = "VPC의 IP 주소 범위"
   value       = aws_vpc.main.cidr_block
 }
+
+output "ecr_repository_url" {
+  description = "앱 이미지를 푸시할 ECR 저장소 주소"
+  value       = aws_ecr_repository.app.repository_url
+}
