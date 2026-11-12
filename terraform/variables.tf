@@ -32,3 +32,8 @@ variable "image_tag" {
   description = "ECS로 실행할 앱 이미지 태그 (Git 커밋 해시). 예: -var image_tag=aa3e184"
   type        = string
 }
+
+variable "aws_account_id" {
+  description = "이 프로젝트가 쓰는 개인 AWS 계정 번호. Public 레포라 terraform.tfvars(커밋 안 됨)에만 적는다."
+  type        = string
+}

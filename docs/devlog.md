@@ -93,3 +93,10 @@
 - 배운 것: ECS는 이미지가 ECR에 먼저 있어야 해서 첫 배포는 `-target`으로 ECR을 먼저 만든다. Fargate는 작업마다 IP를 받기 때문에 대상 그룹의 `target_type`이 `ip`여야 한다. 실행 역할은 ECS가 이미지를 받고 로그를 쓰는 권한이고, 앱 코드가 쓰는 권한(작업 역할)과는 다르다.
 - 비용: 약 10분 사용, 1시간 단위 과금으로 약 $0.12. destroy 후 ALB, NAT, EIP, ECS, ECR, VPC, 로그 그룹, IAM 역할 0개 확인.
 - 다음 할 일: 5단계 RDS(MySQL) 연결. 기동 시간 개선(0.5 vCPU 비교 또는 JVM 옵션)도 검토.
+
+### 팀 프로젝트(project2)와 분리
+- 한 일: 같은 맥에서 하는 팀 프로젝트와 겹치는 지점을 점검했다. 폴더, 저장소, 리전(시드니와 서울), 리소스 이름과 태그는 이미 달랐다. 겹치는 곳은 AWS 자격 증명(`~/.aws`의 `default` 프로필 하나)뿐이었다.
+- 위험: 팀 계정 키로 `default`를 덮어쓰면 이 프로젝트의 `terraform apply`가 팀 계정에 리소스를 만들 수 있었다.
+- 조치: provider에 `allowed_account_ids`를 추가했다. Public 레포라 계정 번호는 커밋되지 않는 `terraform.tfvars`에서 읽고, 형식만 `terraform.tfvars.example`로 남겼다. CLAUDE.md에 분리 규칙을 적었다.
+- 확인한 것: 올바른 계정이면 plan이 정상이고, 다른 계정 번호를 주면 `AWS account ID not allowed`로 멈춘다. `terraform.tfvars`는 `git check-ignore`로 무시되는 것을 확인했다.
+- 배운 것: 리소스 이름을 다르게 짓는 것만으로는 부족하다. 실수는 대부분 "어느 계정에 붙어 있는지 모르는 상태"에서 생긴다. 계정을 코드에서 고정하면 자격 증명이 바뀌어도 실행 단계에서 막힌다.
