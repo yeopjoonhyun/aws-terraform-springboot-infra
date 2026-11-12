@@ -31,9 +31,14 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 2단계: 네트워크(VPC, 서브넷 6개, 인터넷 게이트웨이, 퍼블릭 라우팅, 보안 그룹 3개)
 - [x] 3단계: Spring Boot 앱 Docker화, ECR 업로드 ([문서](docs/03-app-docker.md))
 - [x] 4단계: ECS Fargate + ALB 배포 ([문서](docs/04-ecs-alb.md))
-- [ ] 5단계: RDS 연결
-- [ ] 6단계: GitHub Actions CI/CD
-- [ ] 7단계: 모니터링, 비용 최적화, 회고
+- [ ] 5단계: Terraform 다지기 (S3 원격 state와 잠금, 루트 분리, 모듈)
+- [ ] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager)
+- [ ] 7단계: GitHub Actions CI/CD (OIDC)
+- [ ] 8단계: 고가용성과 관측 (멀티 AZ, 자동 확장, 경보)
+- [ ] 9~10단계 (확장, 진행 여부 미정): EKS 전환, GitOps와 모니터링
+- [ ] 마무리: 삭제 순서 문서화, 아키텍처 그림, 회고
+
+자세한 계획과 순서를 정한 이유는 [로드맵](docs/roadmap.md)에 있습니다.
 
 ## 폴더 구조
 ```
