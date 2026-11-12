@@ -27,3 +27,8 @@ variable "vpc_cidr" {
   type        = string
   default     = "10.0.0.0/16"
 }
+
+variable "image_tag" {
+  description = "ECS로 실행할 앱 이미지 태그 (Git 커밋 해시). 예: -var image_tag=aa3e184"
+  type        = string
+}
