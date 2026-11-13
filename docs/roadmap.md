@@ -24,7 +24,7 @@
 
 - 완료: 1~4단계. VPC, 서브넷 6개(public 2, private-app 2, private-db 2), IGW, 보안 그룹 3개(alb, app, db), Spring Boot 앱(saa-notes, Java 21, Spring Boot 4.1.2, Alpine 베이스), ECR(IMMUTABLE 태그, 커밋 SHA), ECS Fargate(ARM64, 0.25 vCPU) + ALB + NAT Gateway, CloudWatch 로그 그룹, 실행 역할.
 - 4단계 리소스는 destroy로 정리 완료. 현재 AWS 요금 0.
-- Terraform 구조: `terraform/` 한 폴더(루트 1개), state는 로컬. 원격 state와 루트 분리는 아직 없음.
+- Terraform 구조(2026-11-13 갱신): `bootstrap/`(state 버킷), `terraform/network/`(무료, 유지), `terraform/app/`(요금 발생)로 루트를 나눴고 state는 S3에 둔다. data 루트(RDS)는 6단계에서 추가한다.
 - 앱 DB: H2 메모리 DB. MySQL 드라이버 없음.
 - 알려진 이슈: 0.25 vCPU에서 앱 기동이 약 67초 걸림 (`health_check_grace_period_seconds = 120`으로 버팀).
 
@@ -59,4 +59,4 @@
 
 ## 다음에 할 일
 
-5단계 Terraform 다지기 진행 중. state용 S3 버킷(bootstrap)과 backend 연결은 끝났다(2026-11-13, `docs/05-remote-state.md`). 다음은 루트를 network / data / app으로 나누고 `terraform_remote_state`로 연결하는 작업이다. 첫 apply 때 S3에 state와 잠금 파일이 실제로 생기는지 확인한다.
+5단계 Terraform 다지기 진행 중. state용 S3 버킷(bootstrap)과 backend 연결은 끝났다(2026-11-13, `docs/05-remote-state.md`). 루트 분리(network / app)도 코드와 network apply까지 끝났다(S3 저장 확인). 남은 것은 app 루트를 한 번 실제로 apply해서 분리가 동작하는지 검증(약 $0.12)하고 destroy하는 것, 그리고 반복 패턴을 모듈로 정리하는 것이다.

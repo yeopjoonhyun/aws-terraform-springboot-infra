@@ -2,8 +2,8 @@
 resource "aws_lb" "app" {
   name               = "${var.project_name}-alb"
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = [for k, v in local.public_subnets : aws_subnet.this[k].id]
+  security_groups    = [local.net.security_group_ids["alb"]]
+  subnets            = local.net.public_subnet_ids
 }
 
 # 대상 그룹: ALB가 요청을 보낼 앱 컨테이너 목록. Fargate는 컨테이너마다 IP를 받으므로 target_type은 ip.
@@ -12,7 +12,7 @@ resource "aws_lb_target_group" "app" {
   port        = var.app_port
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = local.net.vpc_id
 
   # 컨테이너를 뺄 때 처리 중인 요청을 기다리는 시간. 기본 300초는 실습에서 destroy만 느리게 한다.
   deregistration_delay = 30

@@ -109,3 +109,12 @@
 - 설계 포인트: 버킷 이름에 계정 번호 대신 무작위 접미사를 썼다. 잠금은 DynamoDB 대신 S3 네이티브 잠금(`use_lockfile`)이다. state 버킷은 destroy하지 않는 예외다.
 - 비용: S3 버킷 1개(파일 몇 KB)로 사실상 0. 요금이 나가는 리소스는 만들지 않았다.
 - 다음 할 일: 루트를 network / data / app으로 분리하고 `terraform_remote_state`로 연결.
+
+## 2026-11-13 (2)
+- 한 일: 루트를 `terraform/network`(무료)와 `terraform/app`(요금 발생)으로 분리. `git mv`로 파일 이력을 유지하며 옮기고, app이 network 값을 `terraform_remote_state`로 읽게 바꿨다. network는 `apply`(24개)해서 S3 저장을 확인했고, app은 `plan`(14개)까지 확인했다. 자세한 내용은 `docs/05-remote-state.md`.
+- 설계 결정: NAT Gateway를 app으로 옮겨 network를 전부 무료로 만들었다. 프라이빗 라우팅 테이블은 network가 갖고, NAT로 나가는 경로(`aws_route`) 한 개만 app이 추가한다. app을 destroy하면 그 경로도 사라져 network가 항상 처음 상태로 돌아온다. 이 때문에 network의 라우팅 테이블에는 `route` 블록을 직접 쓰지 않는다(섞어 쓰면 서로 덮어쓴다).
+- 확인한 것: 지난번 미확인이던 "S3에 장부가 실제로 저장되는지"를 확인했다. `network/terraform.tfstate`(약 42KB)가 올라갔고 버전 기록이 쌓였으며 로컬에는 state 파일이 생기지 않았다. 개수 검산: 옛 37개 → 분리 후 network 24 + app 14 = 38 (NAT 경로가 별도 리소스로 갈라진 1개 차이).
+- 아직 안 한 것: app 루트의 실제 apply(NAT, ALB, ECS, 약 $0.12). `aws_route`가 network의 라우팅 테이블에 붙는지와 앱이 뜨는지는 이때 확인한다.
+- 배운 것: 루트를 나누면 "누가 무엇을 소유하는가"를 정해야 한다. 라우팅 테이블처럼 두 루트가 같이 만지는 리소스는 소유자를 하나로 정하고 나머지는 별도 리소스로 얹는다. 비용 구조(켜 두면 요금이 나가는가)를 경계로 삼으면 나누는 이유가 분명해진다.
+- 비용: network는 전부 무료이고 현재 켜져 있다(유지). 요금이 나가는 리소스는 만들지 않았다.
+- 다음 할 일: app 루트 apply 검증과 destroy, 반복 패턴 모듈화.

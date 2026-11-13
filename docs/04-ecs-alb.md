@@ -10,9 +10,11 @@
 
 | 파일 | 내용 |
 |---|---|
-| `terraform/routing.tf` | NAT Gateway(+EIP), 프라이빗 앱 라우팅 테이블 |
-| `terraform/alb.tf` | ALB, 대상 그룹(target_type `ip`), HTTP 리스너 |
-| `terraform/ecs.tf` | 클러스터, 로그 그룹(7일), 실행 역할, 작업 정의(ARM64, 0.25 vCPU/0.5GB), 서비스 |
+| `terraform/app/nat.tf` | NAT Gateway(+EIP), 프라이빗 앱 서브넷이 NAT로 나가는 경로 |
+| `terraform/app/alb.tf` | ALB, 대상 그룹(target_type `ip`), HTTP 리스너 |
+| `terraform/app/ecs.tf` | 클러스터, 로그 그룹(7일), 실행 역할, 작업 정의(ARM64, 0.25 vCPU/0.5GB), 서비스 |
+
+> 2026-11-13에 루트를 `terraform/network`(무료, 유지)와 `terraform/app`(요금 발생, 쓸 때만)으로 나눴다. 이 문서의 파일 경로는 분리 후 기준이다. 분리 이유와 구조는 [05-remote-state.md](05-remote-state.md) 참고.
 
 ## 설계 결정
 - **앱은 프라이빗 서브넷**에 두고 공인 IP를 주지 않는다. 인터넷에서 들어오는 길은 ALB뿐이고, 앱은 ALB 보안 그룹에서 오는 8080만 받는다.
@@ -24,8 +26,10 @@
 
 ## 배포 절차
 ECS는 ECR에 이미지가 있어야 작업을 띄울 수 있다. ECR 저장소도 Terraform이 만들기 때문에 처음에는 두 단계로 나눈다.
+네트워크(`terraform/network`)가 먼저 만들어져 있어야 한다. 없으면 app 루트가 읽을 값이 없어서 에러가 난다.
 ```bash
-cd terraform
+(cd terraform/network && terraform apply)   # 무료. 이미 있으면 건너뛴다
+cd terraform/app
 TAG=aa3e184   # 배포할 이미지 태그
 # 1) ECR만 먼저 생성
 terraform apply -var image_tag=$TAG -target=aws_ecr_repository.app -target=aws_ecr_lifecycle_policy.app
@@ -36,7 +40,7 @@ docker tag saa-notes:local "${REPO}:${TAG}" && docker push "${REPO}:${TAG}"
 # 3) 나머지 전체 생성
 terraform apply -var image_tag=$TAG
 terraform output -raw alb_url
-# 4) 확인이 끝나면 반드시 삭제
+# 4) 확인이 끝나면 반드시 삭제 (app만 지운다. network는 무료라 그대로 둔다)
 terraform destroy -var image_tag=$TAG
 ```
 

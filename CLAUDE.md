@@ -4,7 +4,9 @@
 클라우드/인프라 엔지니어 취업 포트폴리오. Terraform으로 AWS 인프라를 만들고, 그 위에 Spring Boot 앱을 GitHub Actions로 자동 배포한다. 진행 단계는 `README.md`, 날짜별 기록은 `docs/devlog.md`를 본다.
 
 ## 구조
-- `terraform/` 인프라 코드 (VPC, 서브넷, 보안 그룹 등)
+- `bootstrap/` state용 S3 버킷 (로컬 state, 최초 1회)
+- `terraform/network/` VPC, 서브넷, 보안 그룹. 전부 무료라 유지해도 된다 (루트 1)
+- `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 2). network가 먼저 apply되어 있어야 한다.
 - `app/` Spring Boot 앱 (SAA 학습 노트 API, Gradle, Java 21)
 - `docs/` 설계 문서와 개발 일지
 - `.github/workflows/` CI/CD (예정)
@@ -33,8 +35,9 @@
 
 ## 자주 쓰는 명령
 ```bash
-cd terraform && terraform fmt && terraform validate && terraform plan -var image_tag=<커밋 해시>
-terraform apply -var image_tag=<커밋 해시>   # 확인 후 반드시 terraform destroy (배포 순서는 docs/04-ecs-alb.md)
+cd terraform/network && terraform fmt && terraform validate && terraform plan   # 무료, 유지 가능
+cd terraform/app && terraform plan -var image_tag=<커밋 해시>
+terraform apply -var image_tag=<커밋 해시>   # app만 destroy한다 (배포 순서는 docs/04-ecs-alb.md)
 cd app && docker build -t saa-notes:local .   # Docker 엔진은 colima start 필요
 ```
 

@@ -72,8 +72,8 @@ resource "aws_ecs_service" "app" {
   health_check_grace_period_seconds = 120
 
   network_configuration {
-    subnets          = [for k, v in local.subnets : aws_subnet.this[k].id if v.tier == "private-app"]
-    security_groups  = [aws_security_group.app.id]
+    subnets          = local.net.private_app_subnet_ids
+    security_groups  = [local.net.security_group_ids["app"]]
     assign_public_ip = false # 프라이빗 서브넷: 공인 IP 없이 NAT로만 나간다
   }
 
@@ -83,6 +83,7 @@ resource "aws_ecs_service" "app" {
     container_port   = var.app_port
   }
 
-  # 대상 그룹이 ALB에 연결된 뒤에 서비스를 만들어야 한다
-  depends_on = [aws_lb_listener.http]
+  # 대상 그룹이 ALB에 연결되고, 프라이빗 서브넷에서 NAT로 나가는 길이 생긴 뒤에 서비스를 만들어야 한다
+  # (길이 없으면 ECR에서 이미지를 받지 못해 작업이 시작되지 못한다)
+  depends_on = [aws_lb_listener.http, aws_route.private_app_nat]
 }
