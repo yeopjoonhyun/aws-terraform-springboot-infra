@@ -100,3 +100,12 @@
 - 조치: provider에 `allowed_account_ids`를 추가했다. Public 레포라 계정 번호는 커밋되지 않는 `terraform.tfvars`에서 읽고, 형식만 `terraform.tfvars.example`로 남겼다. CLAUDE.md에 분리 규칙을 적었다.
 - 확인한 것: 올바른 계정이면 plan이 정상이고, 다른 계정 번호를 주면 `AWS account ID not allowed`로 멈춘다. `terraform.tfvars`는 `git check-ignore`로 무시되는 것을 확인했다.
 - 배운 것: 리소스 이름을 다르게 짓는 것만으로는 부족하다. 실수는 대부분 "어느 계정에 붙어 있는지 모르는 상태"에서 생긴다. 계정을 코드에서 고정하면 자격 증명이 바뀌어도 실행 단계에서 막힌다.
+
+## 2026-11-13
+- 한 일: 5단계 시작. Terraform state를 S3로 옮길 준비로 `bootstrap/`을 만들었다. S3 버킷(버전 관리, 암호화, 공개 차단, HTTPS 강제, 90일 정리, `prevent_destroy`)을 `apply`로 만들고 AWS CLI로 설정을 하나씩 확인했다. 이어서 `terraform/`에 `backend "s3"`를 연결했다(S3 네이티브 잠금). 자세한 내용은 `docs/05-remote-state.md`.
+- 시작 점검: 지금 자격 증명이 개인 계정인지 확인하고, 태그로 범위를 좁혀 남은 리소스를 조회했다. ECS 클러스터와 작업 정의가 목록에 보였지만 둘 다 `INACTIVE`(삭제 후 기록만 남은 상태)였고 요금이 나가는 리소스는 0개였다.
+- 막힌 것: 연결 후 `terraform state list | wc -l`이 5로 나와 리소스가 5개 있는 줄 알았다. 원문을 보니 "No state file was found!" 에러 문구의 줄 수였다(state가 비어 있음). `plan`의 "No value for required variable"은 `image_tag`가 필수 변수라서였다. 값을 넣으면 정상(37개 추가).
+- 배운 것: 명령 출력을 `wc -l`로 세기 전에 원문을 먼저 본다. 에러 문구도 줄 수로 세어진다. 비어 있는 state는 S3에 파일이 만들어지지 않으므로, 실제 저장은 첫 apply에서 확인된다.
+- 설계 포인트: 버킷 이름에 계정 번호 대신 무작위 접미사를 썼다. 잠금은 DynamoDB 대신 S3 네이티브 잠금(`use_lockfile`)이다. state 버킷은 destroy하지 않는 예외다.
+- 비용: S3 버킷 1개(파일 몇 KB)로 사실상 0. 요금이 나가는 리소스는 만들지 않았다.
+- 다음 할 일: 루트를 network / data / app으로 분리하고 `terraform_remote_state`로 연결.

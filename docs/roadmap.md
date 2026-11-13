@@ -59,4 +59,4 @@
 
 ## 다음에 할 일
 
-5단계 Terraform 다지기부터 시작한다. 첫 작업은 state용 S3 버킷을 만드는 bootstrap 루트 작성이다.
+5단계 Terraform 다지기 진행 중. state용 S3 버킷(bootstrap)과 backend 연결은 끝났다(2026-11-13, `docs/05-remote-state.md`). 다음은 루트를 network / data / app으로 나누고 `terraform_remote_state`로 연결하는 작업이다. 첫 apply 때 S3에 state와 잠금 파일이 실제로 생기는지 확인한다.

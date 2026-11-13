@@ -1,5 +1,15 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0" # S3 네이티브 잠금(use_lockfile)에 필요
+
+  # state(장부)를 내 컴퓨터가 아니라 S3 버킷에 둔다. 버킷은 bootstrap/ 에서 만든다.
+  # 버킷 이름은 무작위 접미사만 있고 계정 번호가 없어서 커밋해도 된다.
+  backend "s3" {
+    bucket       = "aws-tf-springboot-tfstate-6fa62f"
+    key          = "app/terraform.tfstate"
+    region       = "ap-southeast-2"
+    encrypt      = true
+    use_lockfile = true # 동시에 두 곳에서 apply하지 못하게 S3에 잠금 파일을 만든다
+  }
 
   required_providers {
     aws = {

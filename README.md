@@ -31,7 +31,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 2단계: 네트워크(VPC, 서브넷 6개, 인터넷 게이트웨이, 퍼블릭 라우팅, 보안 그룹 3개)
 - [x] 3단계: Spring Boot 앱 Docker화, ECR 업로드 ([문서](docs/03-app-docker.md))
 - [x] 4단계: ECS Fargate + ALB 배포 ([문서](docs/04-ecs-alb.md))
-- [ ] 5단계: Terraform 다지기 (S3 원격 state와 잠금, 루트 분리, 모듈)
+- [ ] 5단계: Terraform 다지기 (S3 원격 state와 잠금, 루트 분리, 모듈) — S3 원격 state 설정 완료 ([문서](docs/05-remote-state.md)) / 루트 분리와 모듈 남음
 - [ ] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager)
 - [ ] 7단계: GitHub Actions CI/CD (OIDC)
 - [ ] 8단계: 고가용성과 관측 (멀티 AZ, 자동 확장, 경보)
