@@ -23,7 +23,7 @@
 ## 팀 프로젝트(project2)와 분리
 이 레포는 개인 프로젝트다. 같은 맥에 팀 프로젝트 project2(`~/.t3/projects/project2`, 서울 리전, 팀 AWS 계정)가 있다. 서로 영향이 없어야 한다.
 - project2의 폴더, 파일, state, AWS 리소스는 읽지도 바꾸지도 않는다.
-- Terraform은 `allowed_account_ids`로 개인 계정에서만 실행된다. 계정 번호는 `terraform/terraform.tfvars`(커밋 안 됨)에 있다. 없으면 `terraform.tfvars.example`을 보고 만든다. "account ID not allowed" 에러가 나면 자격 증명이 팀 계정으로 바뀐 것이니 멈추고 사용자에게 알린다.
+- Terraform은 `allowed_account_ids`로 개인 계정에서만 실행된다. 계정 번호는 루트마다 있는 `terraform.tfvars`(`bootstrap/`, `terraform/network/`, `terraform/app/`, 커밋 안 됨)에 있다. 없으면 `terraform.tfvars.example`을 보고 만든다. "account ID not allowed" 에러가 나면 자격 증명이 팀 계정으로 바뀐 것이니 멈추고 사용자에게 알린다.
 - 새 리소스 이름은 `aws-tf-springboot` 접두사를 붙인다. S3 state 버킷도 마찬가지다.
 - AWS 조회와 삭제 확인은 `Project=aws-tf-springboot` 태그나 이름 접두사로 범위를 좁힌다. 계정 전체를 대상으로 지우는 명령은 쓰지 않는다.
 - `~/.aws` 설정을 바꾸는 명령(`aws configure` 등)은 실행하지 않는다. 두 프로젝트가 함께 쓰는 파일이다.
