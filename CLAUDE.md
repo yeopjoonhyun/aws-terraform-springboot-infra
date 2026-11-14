@@ -40,7 +40,12 @@ cd terraform/network && terraform fmt && terraform validate && terraform plan   
 cd terraform/app && terraform plan -var image_tag=<커밋 해시>
 terraform apply -var image_tag=<커밋 해시>   # app만 destroy한다 (배포 순서는 docs/04-ecs-alb.md)
 cd app && docker build -t saa-notes:local .   # Docker 엔진은 colima start 필요
+
+# 요금 점검: 작업을 마칠 때 실행한다. 0이어야 정상 (network와 state 버킷은 무료라 켜 둔다)
+cd terraform/app && terraform state list | grep -c .
 ```
+- 태그 조회(`resourcegroupstaggingapi get-resources`)에는 지운 리소스가 한동안 남는다. 목록에 보이면 바로 결론 내리지 말고 각 서비스의 실제 상태를 확인한다. NAT는 `deleted`, ECS는 `INACTIVE`면 요금이 없다.
+- Cost Explorer API(`aws ce ...`)는 호출 1번에 $0.01이 붙는다. 요금 확인은 콘솔이나 Budgets 조회로 한다.
 
 ## 이 컴퓨터의 환경
 - AWS CLI 프로필은 기본(`terraform-admin`), 기본 리전 `ap-southeast-2`
