@@ -1,45 +1,34 @@
-# 아래 값들은 app 루트가 terraform_remote_state로 읽어 간다. 이름을 바꾸면 app도 함께 고쳐야 한다.
+# app 루트가 terraform_remote_state로 이 값들을 읽는다. 모듈로 옮기기 전과 이름을 똑같이 유지한다.
+# 이름을 바꾸면 app 루트도 함께 고쳐야 한다.
 
 output "vpc_id" {
-  description = "VPC ID"
-  value       = aws_vpc.main.id
+  value = module.network.vpc_id
 }
 
 output "vpc_cidr" {
-  description = "VPC의 IP 주소 범위"
-  value       = aws_vpc.main.cidr_block
+  value = module.network.vpc_cidr
 }
 
 output "subnet_ids" {
-  description = "서브넷 이름별 ID (예: public-a, app-a, db-a)"
-  value       = { for k, s in aws_subnet.this : k => s.id }
+  value = module.network.subnet_ids
 }
 
 output "public_subnet_ids" {
-  description = "퍼블릭 서브넷 ID 목록 (ALB가 사용)"
-  value       = [for k, v in local.public_subnets : aws_subnet.this[k].id]
+  value = module.network.public_subnet_ids
 }
 
 output "private_app_subnet_ids" {
-  description = "앱용 프라이빗 서브넷 ID 목록 (ECS가 사용)"
-  value       = [for k, v in local.subnets : aws_subnet.this[k].id if v.tier == "private-app"]
+  value = module.network.private_app_subnet_ids
 }
 
 output "security_group_ids" {
-  description = "보안 그룹 ID (alb, app, db)"
-  value = {
-    alb = aws_security_group.alb.id
-    app = aws_security_group.app.id
-    db  = aws_security_group.db.id
-  }
+  value = module.network.security_group_ids
 }
 
 output "private_app_route_table_id" {
-  description = "앱 서브넷의 라우팅 테이블 ID (app 루트가 NAT로 나가는 길을 추가한다)"
-  value       = aws_route_table.private_app.id
+  value = module.network.private_app_route_table_id
 }
 
 output "internet_gateway_id" {
-  description = "인터넷 게이트웨이 ID"
-  value       = aws_internet_gateway.main.id
+  value = module.network.internet_gateway_id
 }

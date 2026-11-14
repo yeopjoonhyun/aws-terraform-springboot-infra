@@ -43,9 +43,30 @@ terraform/app/      ECR, NAT Gateway, ALB, ECS, 로그, 실행 역할. 시간당
 - app 루트의 `terraform plan`이 network의 출력값을 원격 state로 읽어 와서 14개 추가로 정상 계산됐다.
 - 개수 검산: 옛 단일 루트는 37개, 분리 후 network 24 + app 14 = 38개다. 1개 차이는 프라이빗 라우팅 테이블 안에 들어 있던 NAT 경로가 별도 리소스(`aws_route`)로 갈라졌기 때문이다.
 
+## 분리 후 실제 배포 검증 (2026-11-14)
+- app 루트 apply(14개) 후 network의 프라이빗 라우팅 테이블에 `0.0.0.0/0 → nat-...` 경로가 `active`로 붙었다.
+- 대상 상태 `healthy`, ALB로 헬스체크 UP, 생성 201, 조회 200, 빈 제목 400, 없는 노트 404.
+- **app이 켜진 상태에서 network plan이 `No changes`**: network가 app의 경로를 자기 것이 아닌 변경으로 보고 지우려 하지 않는다. 소유자를 하나로 정하고 경로만 얹는 설계가 동작한다.
+- app destroy(14개) 후 라우팅 테이블은 `local` 경로만 남았고 network plan은 여전히 `No changes`.
+
 ## 아직 확인하지 못한 것
-- **app 루트를 실제로 apply해서 `aws_route`가 network의 라우팅 테이블에 붙고 앱이 뜨는 것**은 아직 확인하지 않았다. 요금이 나가는 단계(약 $0.12)라서 확인 후 진행한다.
 - 잠금 파일은 apply 도중에만 존재해서 따로 확인하지 못했다.
+
+## 모듈화 (2026-11-14)
+network 코드를 `terraform/modules/network/`로 옮기고, `terraform/network/` 루트는 이 모듈을 한 번 부르게 바꿨다.
+
+```
+terraform/
+├── modules/network/   VPC, 서브넷, 라우팅, 보안 그룹 (provider 설정 없음)
+├── network/           module "network" 호출 + moved 블록 + 출력값 전달
+└── app/               변경 없음 (network 출력값 이름을 그대로 유지했기 때문)
+```
+
+- **moved 블록 17개**: 켜져 있던 리소스 24개의 장부 주소를 `aws_vpc.main` → `module.network.aws_vpc.main`처럼 바꿨다. `for_each` 리소스는 블록 하나로 모든 인스턴스가 옮겨진다. 블록이 없으면 Terraform은 옛것을 지우고 새로 만든다고 계획한다.
+- 결과: plan `24 moved, 0 to add, 0 to change, 0 to destroy`, apply 후 출력값 JSON이 전후 동일했다.
+- 모듈은 provider를 설정하지 않는다. 리전, 계정 고정(`allowed_account_ids`), 공통 태그는 부르는 루트가 정한다.
+- 모듈 출력값 이름을 옛 루트 출력값과 똑같이 두어 app 루트(`terraform_remote_state`)는 한 줄도 고치지 않았다.
+- 판단 기록: 지금은 이 모듈을 쓰는 곳이 하나뿐이다. 이득은 EKS 루트나 다른 환경(dev/prod)이 같은 네트워크를 다시 만들 때 생긴다. provider와 backend는 반복되지만 모듈로 만들 수 없다(backend에는 변수를 쓸 수 없다).
 
 ## 사용법
 ```bash
@@ -57,6 +78,4 @@ cd terraform/app && terraform plan -var image_tag=<커밋 해시>
 세 폴더(`bootstrap`, `terraform/network`, `terraform/app`) 각각의 `terraform.tfvars`에 `aws_account_id`가 필요하다(커밋되지 않음, 형식은 폴더별 `terraform.tfvars.example`).
 
 ## 다음 단계
-- app 루트를 한 번 apply해서 분리가 실제로 동작하는지 검증하고 destroy
-- 6단계에서 data 루트(RDS)를 추가하고 같은 방식으로 연결
-- 반복되는 패턴은 모듈로
+- 6단계에서 data 루트(RDS)를 추가하고 같은 방식(`terraform_remote_state`)으로 연결

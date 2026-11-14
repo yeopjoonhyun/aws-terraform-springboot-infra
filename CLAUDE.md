@@ -5,7 +5,8 @@
 
 ## 구조
 - `bootstrap/` state용 S3 버킷 (로컬 state, 최초 1회)
-- `terraform/network/` VPC, 서브넷, 보안 그룹. 전부 무료라 유지해도 된다 (루트 1)
+- `terraform/modules/network/` 네트워크 모듈 (VPC, 서브넷, 라우팅, 보안 그룹). provider 설정 없음
+- `terraform/network/` 위 모듈을 부르는 루트. 전부 무료라 유지해도 된다 (루트 1). 출력값 이름을 바꾸면 app도 고쳐야 한다
 - `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 2). network가 먼저 apply되어 있어야 한다.
 - `app/` Spring Boot 앱 (SAA 학습 노트 API, Gradle, Java 21)
 - `docs/` 설계 문서와 개발 일지
