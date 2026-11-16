@@ -7,7 +7,8 @@
 - `bootstrap/` state용 S3 버킷 (로컬 state, 최초 1회)
 - `terraform/modules/network/` 네트워크 모듈 (VPC, 서브넷, 라우팅, 보안 그룹). provider 설정 없음
 - `terraform/network/` 위 모듈을 부르는 루트. 전부 무료라 유지해도 된다 (루트 1). 출력값 이름을 바꾸면 app도 고쳐야 한다
-- `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 2). network가 먼저 apply되어 있어야 한다.
+- `terraform/data/` RDS MySQL. 암호는 RDS가 Secrets Manager에 만든다. 요금이 나가므로 쓰고 나면 destroy (루트 2). 삭제 방지가 켜져 있어 destroy 전에 `-var deletion_protection=false`로 apply하고, 남은 최종 스냅샷을 지운다 (docs/06-rds.md)
+- `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 3). 순서는 network -> data -> app, 삭제는 반대.
 - `app/` Spring Boot 앱 (SAA 학습 노트 API, Gradle, Java 21)
 - `docs/` 설계 문서와 개발 일지
 - `.github/workflows/` CI/CD (예정)
@@ -43,6 +44,8 @@ cd app && docker build -t saa-notes:local .   # Docker 엔진은 colima start �
 
 # 요금 점검: 작업을 마칠 때 실행한다. 0이어야 정상 (network와 state 버킷은 무료라 켜 둔다)
 cd terraform/app && terraform state list | grep -c .
+cd terraform/data && terraform state list | grep -c .
+aws rds describe-db-snapshots --snapshot-type manual --query "length(DBSnapshots[?starts_with(DBSnapshotIdentifier,'aws-tf-springboot')])"
 ```
 - 태그 조회(`resourcegroupstaggingapi get-resources`)에는 지운 리소스가 한동안 남는다. 목록에 보이면 바로 결론 내리지 말고 각 서비스의 실제 상태를 확인한다. NAT는 `deleted`, ECS는 `INACTIVE`면 요금이 없다.
 - Cost Explorer API(`aws ce ...`)는 호출 1번에 $0.01이 붙는다. 요금 확인은 콘솔이나 Budgets 조회로 한다.

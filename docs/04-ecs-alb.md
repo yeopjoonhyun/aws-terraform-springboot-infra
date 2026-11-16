@@ -29,6 +29,7 @@ ECS는 ECR에 이미지가 있어야 작업을 띄울 수 있다. ECR 저장소�
 네트워크(`terraform/network`)가 먼저 만들어져 있어야 한다. 없으면 app 루트가 읽을 값이 없어서 에러가 난다.
 ```bash
 (cd terraform/network && terraform apply)   # 무료. 이미 있으면 건너뛴다
+(cd terraform/data && terraform apply)      # 6단계부터: RDS가 먼저 있어야 한다 (docs/06-rds.md)
 cd terraform/app
 TAG=aa3e184   # 배포할 이미지 태그
 # 1) ECR만 먼저 생성

@@ -32,7 +32,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 3단계: Spring Boot 앱 Docker화, ECR 업로드 ([문서](docs/03-app-docker.md))
 - [x] 4단계: ECS Fargate + ALB 배포 ([문서](docs/04-ecs-alb.md))
 - [x] 5단계: Terraform 다지기 (S3 원격 state와 잠금, 루트 분리, 모듈) ([문서](docs/05-remote-state.md))
-- [ ] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager)
+- [x] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager) ([문서](docs/06-rds.md))
 - [ ] 7단계: GitHub Actions CI/CD (OIDC)
 - [ ] 8단계: 고가용성과 관측 (멀티 AZ, 자동 확장, 경보)
 - [ ] 9~10단계 (확장, 진행 여부 미정): EKS 전환, GitOps와 모니터링
@@ -44,6 +44,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 ```
 bootstrap/          # Terraform state를 보관할 S3 버킷 (최초 1회)
 terraform/network/  # VPC, 서브넷, 보안 그룹 (전부 무료, 항상 유지)
+terraform/data/     # RDS MySQL, 암호는 Secrets Manager (요금 발생, 쓸 때만 켜기)
 terraform/app/      # ECR, NAT, ALB, ECS (요금 발생, 쓸 때만 켜기)
 app/                # Spring Boot 애플리케이션
 docs/        # 설계 문서, 개발 일지, 트러블슈팅 기록
@@ -51,4 +52,4 @@ docs/        # 설계 문서, 개발 일지, 트러블슈팅 기록
 ```
 
 ## 비용 관리
-실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. NAT Gateway, ALB, RDS는 켜두는 동안 요금이 발생합니다.
+실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. NAT Gateway, ALB, RDS는 켜두는 동안 요금이 발생합니다. 삭제는 만든 순서의 반대(app -> data)로 합니다.
