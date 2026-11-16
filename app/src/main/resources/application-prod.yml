@@ -1,0 +1,15 @@
+# prod 프로필: SPRING_PROFILES_ACTIVE=prod 일 때만 켜진다 (ECS 작업 정의에서 지정).
+# 접속 정보는 코드에 적지 않고 환경 변수로 받는다.
+#   DB_HOST, DB_NAME            : ECS 작업 정의의 environment (비밀 아님)
+#   DB_USERNAME, DB_PASSWORD    : Secrets Manager에서 ECS가 꺼내 넣는다 (secrets)
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:3306/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      # 테이블이 없으면 만들고, 있으면 데이터를 지우지 않는다 (create-drop은 종료 때 테이블을 지운다).
+      # ponytail: 스키마 변경 이력 관리가 필요해지면 Flyway로 바꾼다.
+      ddl-auto: update

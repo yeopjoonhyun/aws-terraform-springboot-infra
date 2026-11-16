@@ -45,6 +45,18 @@ data "terraform_remote_state" "network" {
   }
 }
 
+# data 루트가 만든 RDS 접속 주소와 비밀(Secrets Manager)의 위치를 읽는다. 순서: network -> data -> app.
+data "terraform_remote_state" "data" {
+  backend = "s3"
+
+  config = {
+    bucket = "aws-tf-springboot-tfstate-6fa62f"
+    key    = "data/terraform.tfstate"
+    region = var.aws_region
+  }
+}
+
 locals {
   net = data.terraform_remote_state.network.outputs
+  db  = data.terraform_remote_state.data.outputs
 }

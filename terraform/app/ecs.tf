@@ -28,6 +28,22 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# 컨테이너를 띄울 때 ECS가 DB 비밀을 꺼내 환경 변수로 넣는다. 그 비밀 하나만 읽을 수 있게 허용한다.
+# (비밀은 RDS 기본 키 aws/secretsmanager로 암호화되어 있어 KMS 권한은 따로 필요 없다)
+resource "aws_iam_role_policy" "task_execution_db_secret" {
+  name = "read-db-secret"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "secretsmanager:GetSecretValue"
+      Resource = local.db.db_secret_arn
+    }]
+  })
+}
+
 # 작업 정의: "어떤 이미지를, 얼마만큼의 CPU·메모리로, 어떻게 실행할지" 적은 설계도
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.project_name}-app"
@@ -48,6 +64,20 @@ resource "aws_ecs_task_definition" "app" {
     image        = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
     essential    = true
     portMappings = [{ containerPort = var.app_port, protocol = "tcp" }]
+
+    # 비밀이 아닌 설정값. prod 프로필이 켜지면 application-prod.yml이 이 값으로 MySQL에 접속한다.
+    environment = [
+      { name = "SPRING_PROFILES_ACTIVE", value = "prod" },
+      { name = "DB_HOST", value = local.db.db_host },
+      { name = "DB_NAME", value = local.db.db_name },
+    ]
+
+    # 비밀값. 작업 정의에는 위치(ARN)만 적고, 실제 값은 시작할 때 ECS가 Secrets Manager에서 꺼낸다.
+    # "ARN:키::" 는 비밀(JSON) 안의 username, password 칸을 하나씩 꺼내라는 뜻이다.
+    secrets = [
+      { name = "DB_USERNAME", valueFrom = "${local.db.db_secret_arn}:username::" },
+      { name = "DB_PASSWORD", valueFrom = "${local.db.db_secret_arn}:password::" },
+    ]
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -85,5 +115,6 @@ resource "aws_ecs_service" "app" {
 
   # 대상 그룹이 ALB에 연결되고, 프라이빗 서브넷에서 NAT로 나가는 길이 생긴 뒤에 서비스를 만들어야 한다
   # (길이 없으면 ECR에서 이미지를 받지 못해 작업이 시작되지 못한다)
-  depends_on = [aws_lb_listener.http, aws_route.private_app_nat]
+  # 비밀을 읽는 권한이 붙기 전에 작업이 시작되면 비밀을 못 꺼내 실패하므로 그것도 기다린다
+  depends_on = [aws_lb_listener.http, aws_route.private_app_nat, aws_iam_role_policy.task_execution_db_secret]
 }
