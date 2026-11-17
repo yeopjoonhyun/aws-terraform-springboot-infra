@@ -1,11 +1,13 @@
 # 앱 Docker 이미지를 보관하는 저장소 (ECS가 여기서 이미지를 받아 실행한다)
+# app과 따로 둬서 항상 켜 둔다. CI는 app이 꺼져 있어도 이미지를 올릴 수 있다.
+# 비어 있으면 무료, 이미지 저장은 GB당 월 $0.10 (아래 규칙으로 10개만 유지)
 resource "aws_ecr_repository" "app" {
   name = "${var.project_name}-app"
 
   # 같은 태그로 이미지를 덮어쓰지 못하게 해서 "배포된 버전"이 바뀌지 않게 한다
   image_tag_mutability = "IMMUTABLE"
 
-  # 이미지가 남아 있어도 destroy로 지울 수 있게 한다 (실습 후 정리용)
+  # 이미지가 남아 있어도 destroy로 지울 수 있게 한다 (프로젝트를 마칠 때 정리용)
   force_delete = true
 
   # 푸시할 때마다 알려진 취약점(CVE)을 자동으로 검사한다

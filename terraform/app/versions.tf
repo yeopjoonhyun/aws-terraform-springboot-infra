@@ -56,7 +56,19 @@ data "terraform_remote_state" "data" {
   }
 }
 
+# registry 루트의 ECR 주소를 읽는다. ECR은 항상 켜 두므로 app보다 먼저 있다.
+data "terraform_remote_state" "registry" {
+  backend = "s3"
+
+  config = {
+    bucket = "aws-tf-springboot-tfstate-6fa62f"
+    key    = "registry/terraform.tfstate"
+    region = var.aws_region
+  }
+}
+
 locals {
-  net = data.terraform_remote_state.network.outputs
-  db  = data.terraform_remote_state.data.outputs
+  net      = data.terraform_remote_state.network.outputs
+  registry = data.terraform_remote_state.registry.outputs
+  db       = data.terraform_remote_state.data.outputs
 }

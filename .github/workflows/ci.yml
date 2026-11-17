@@ -1,0 +1,56 @@
+# CI: PR과 main 푸시마다 코드가 깨지지 않았는지 확인한다. AWS에는 접속하지 않는다.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# 이 워크플로는 저장소를 읽기만 한다 (최소 권한)
+permissions:
+  contents: read
+
+# 같은 브랜치에 새 커밋이 오면 이전 실행은 취소한다
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 서드파티 액션은 버전 이름(v7) 대신 커밋 해시로 고정한다. 이름은 나중에 다른 코드로 바뀔 수 있다.
+jobs:
+  test:
+    name: 앱 테스트
+    runs-on: ubuntu-24.04
+    container: gradle:9-jdk21 # Dockerfile 빌드 단계와 같은 이미지
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: gradle test
+        working-directory: app
+        run: gradle test --no-daemon
+
+  image:
+    name: ARM 이미지 빌드
+    runs-on: ubuntu-24.04-arm # ECS가 ARM64라서 같은 구조에서 빌드한다
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: docker build
+        run: docker build -t saa-notes:${GITHUB_SHA::7} app
+
+  terraform:
+    name: Terraform 형식, 문법 검사
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.1
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      # backend=false: state(S3)에 접속하지 않고 코드 문법만 본다
+      - name: terraform validate
+        run: |
+          for dir in bootstrap terraform/network terraform/registry terraform/data terraform/app; do
+            echo "== $dir"
+            terraform -chdir=$dir init -backend=false -input=false >/dev/null
+            terraform -chdir=$dir validate
+          done
