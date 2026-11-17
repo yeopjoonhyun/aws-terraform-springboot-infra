@@ -1,4 +1,7 @@
-# CI: PR과 main 푸시마다 코드가 깨지지 않았는지 확인한다. AWS에는 접속하지 않는다.
+# CI: PR과 main 푸시마다 코드가 깨지지 않았는지 확인한다.
+# CD: main에 들어온 커밋만 ECR에 이미지를 올리고, app(ECS)이 켜져 있으면 배포까지 한다.
+#     AWS 키는 배포 전용 최소 권한 사용자 것이다 (OIDC가 SCP로 막혀 택한 차선책, docs/07-cicd.md).
+#     PR에서는 비밀값을 쓰지 않는다.
 name: ci
 
 on:
@@ -35,6 +38,63 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: docker build
         run: docker build -t saa-notes:${GITHUB_SHA::7} app
+
+  deploy:
+    name: ECR 푸시, ECS 배포
+    needs: [test, image, terraform] # 검사가 모두 통과해야 배포한다
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    env:
+      AWS_REGION: ap-southeast-2
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CLUSTER: aws-tf-springboot-cluster
+      SERVICE: aws-tf-springboot-app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # ARM 러너 이미지에 AWS CLI가 없을 수도 있어서 없으면 설치한다
+      - name: AWS CLI 확인
+        run: aws --version || { curl -sSL https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip -o awscli.zip && unzip -q awscli.zip && sudo ./aws/install; }
+
+      # 저장소가 Public이라 실행 로그도 공개된다. 계정 번호가 로그에 찍히지 않게 가린다.
+      - name: ECR 주소 준비
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          echo "::add-mask::$ACCOUNT"
+          echo "REGISTRY=$ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com" >> "$GITHUB_ENV"
+          echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      # ECR은 IMMUTABLE이라 같은 태그를 다시 올릴 수 없다. 재실행이면 푸시를 건너뛴다.
+      - name: 이미지 빌드, 푸시
+        run: |
+          REPO=$REGISTRY/aws-tf-springboot-app
+          if aws ecr describe-images --repository-name aws-tf-springboot-app --image-ids imageTag=$TAG >/dev/null 2>&1; then
+            echo "이미 있는 태그 $TAG, 푸시 건너뜀"
+          else
+            aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+            docker build -t "${REPO}:${TAG}" app
+            docker push "${REPO}:${TAG}"
+          fi
+
+      # app 루트는 쓸 때만 켜므로 꺼져 있으면 배포를 건너뛴다 (실패가 아니다).
+      - name: ECS 배포
+        run: |
+          STATUS=$(aws ecs describe-services --cluster $CLUSTER --services $SERVICE --query 'services[0].status' --output text 2>/dev/null || true)
+          if [ "$STATUS" != "ACTIVE" ]; then
+            echo "::notice::app이 꺼져 있어 배포를 건너뜀. 이미지 $TAG 는 ECR에 있다."
+            exit 0
+          fi
+          # 지금 작업 정의를 그대로 복사하고 이미지 태그만 바꿔 새 버전으로 등록한다
+          CURRENT=$(aws ecs describe-services --cluster $CLUSTER --services $SERVICE --query 'services[0].taskDefinition' --output text)
+          aws ecs describe-task-definition --task-definition "$CURRENT" --query taskDefinition \
+            | jq --arg img "$REGISTRY/aws-tf-springboot-app:$TAG" '.containerDefinitions[0].image = $img
+                | {family, containerDefinitions, executionRoleArn, networkMode, requiresCompatibilities, cpu, memory, runtimePlatform}' > td.json
+          NEW=$(aws ecs register-task-definition --cli-input-json file://td.json --query taskDefinition.taskDefinitionArn --output text)
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE --task-definition "$NEW" >/dev/null
+          echo "새 작업으로 교체 중. 안정될 때까지 기다린다 (최대 10분)"
+          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE
+          echo "배포 완료: $TAG"
 
   terraform:
     name: Terraform 형식, 문법 검사
