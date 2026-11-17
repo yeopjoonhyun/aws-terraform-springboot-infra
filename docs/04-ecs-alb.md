@@ -25,16 +25,17 @@
 - **이미지 태그는 변수**(`image_tag`, Git 커밋 해시). ECR이 태그 불변이라 같은 태그를 다른 이미지로 덮어쓸 수 없다.
 
 ## 배포 절차
-ECS는 ECR에 이미지가 있어야 작업을 띄울 수 있다. ECR 저장소도 Terraform이 만들기 때문에 처음에는 두 단계로 나눈다.
+ECS는 ECR에 이미지가 있어야 작업을 띄울 수 있다.
+7단계부터 ECR은 항상 켜 두는 `terraform/registry` 루트에 있고, main에 푸시하면 CI가 이미지를 올린다 (docs/07-cicd.md).
+그 전에는 ECR이 app 안에 있어서 `-target`으로 ECR만 먼저 만들고 이미지를 올렸다.
 네트워크(`terraform/network`)가 먼저 만들어져 있어야 한다. 없으면 app 루트가 읽을 값이 없어서 에러가 난다.
 ```bash
 (cd terraform/network && terraform apply)   # 무료. 이미 있으면 건너뛴다
+(cd terraform/registry && terraform apply)  # 7단계부터: ECR과 배포 전용 사용자. 무료라 유지
 (cd terraform/data && terraform apply)      # 6단계부터: RDS가 먼저 있어야 한다 (docs/06-rds.md)
 cd terraform/app
-TAG=aa3e184   # 배포할 이미지 태그
-# 1) ECR만 먼저 생성
-terraform apply -var image_tag=$TAG -target=aws_ecr_repository.app -target=aws_ecr_lifecycle_policy.app
-# 2) 이미지 푸시 (zsh에서는 반드시 ${REPO}처럼 중괄호를 쓴다)
+TAG=aa3e184   # 배포할 이미지 태그 (ECR에 있어야 한다. 없으면 아래 2)로 직접 올린다)
+# 2) 이미지 푸시 (CI가 이미 올렸다면 건너뛴다. zsh에서는 반드시 ${REPO}처럼 중괄호를 쓴다)
 REPO=$(aws ecr describe-repositories --repository-names aws-tf-springboot-app --query 'repositories[0].repositoryUri' --output text)
 aws ecr get-login-password | docker login -u AWS --password-stdin ${REPO%%/*}
 docker tag saa-notes:local "${REPO}:${TAG}" && docker push "${REPO}:${TAG}"

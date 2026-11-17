@@ -7,11 +7,14 @@
 - `bootstrap/` state용 S3 버킷 (로컬 state, 최초 1회)
 - `terraform/modules/network/` 네트워크 모듈 (VPC, 서브넷, 라우팅, 보안 그룹). provider 설정 없음
 - `terraform/network/` 위 모듈을 부르는 루트. 전부 무료라 유지해도 된다 (루트 1). 출력값 이름을 바꾸면 app도 고쳐야 한다
+- `terraform/registry/` ECR, GitHub Actions 배포 전용 IAM 사용자(최소 권한). 무료라 유지한다. CI가 app이 꺼져 있어도 이미지를 올릴 수 있게 app에서 분리했다
 - `terraform/data/` RDS MySQL. 암호는 RDS가 Secrets Manager에 만든다. 요금이 나가므로 쓰고 나면 destroy (루트 2). 삭제 방지가 켜져 있어 destroy 전에 `-var deletion_protection=false`로 apply하고, 남은 최종 스냅샷을 지운다 (docs/06-rds.md)
-- `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 3). 순서는 network -> data -> app, 삭제는 반대.
+- `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 3). 순서는 network -> registry -> data -> app, 삭제는 반대(registry와 network는 유지).
 - `app/` Spring Boot 앱 (SAA 학습 노트 API, Gradle, Java 21)
 - `docs/` 설계 문서와 개발 일지
-- `.github/workflows/` CI/CD (예정)
+- `.github/workflows/ci.yml` CI(PR과 main: 테스트, ARM 이미지 빌드, Terraform fmt/validate)와 CD(main만: ECR 푸시, app이 켜져 있으면 ECS 배포). 액션은 커밋 해시로 고정
+  - AWS 접근은 OIDC가 아니라 배포 전용 사용자의 장기 키(GitHub 비밀값 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). 조직 SCP가 OIDC 공급자를 막기 때문이다. 관리자 키(terraform-admin)는 GitHub에 넣지 않는다
+  - 조직 관리 계정은 사용자 Gmail로 등록돼 있지만 현재 로그인이 안 된다(2026-11-17). SCP 내용은 볼 수 없다
 
 ## 반드시 지킬 규칙
 1. **리전은 `ap-southeast-2`(시드니)만 쓴다.** 조직 SCP가 다른 리전의 지역 서비스를 거부한다. 새 AWS 작업 전에 리전부터 확인한다.
@@ -45,6 +48,7 @@ cd app && docker build -t saa-notes:local .   # Docker 엔진은 colima start �
 # 요금 점검: 작업을 마칠 때 실행한다. 0이어야 정상 (network와 state 버킷은 무료라 켜 둔다)
 cd terraform/app && terraform state list | grep -c .
 cd terraform/data && terraform state list | grep -c .
+aws ecr describe-images --repository-name aws-tf-springboot-app --query "length(imageDetails)"   # 작업을 마칠 때 이미지도 지운다 (다음 main 푸시 때 CI가 다시 올린다)
 aws rds describe-db-snapshots --snapshot-type manual --query "length(DBSnapshots[?starts_with(DBSnapshotIdentifier,'aws-tf-springboot')])"
 ```
 - 태그 조회(`resourcegroupstaggingapi get-resources`)에는 지운 리소스가 한동안 남는다. 목록에 보이면 바로 결론 내리지 말고 각 서비스의 실제 상태를 확인한다. NAT는 `deleted`, ECS는 `INACTIVE`면 요금이 없다.

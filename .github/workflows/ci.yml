@@ -9,6 +9,8 @@ on:
     branches: [main]
   push:
     branches: [main]
+    # 문서만 바뀐 커밋은 빌드, 배포하지 않는다 (ECR에 쓸모없는 이미지가 쌓이지 않게)
+    paths-ignore: ["docs/**", "**.md"]
 
 # 이 워크플로는 저장소를 읽기만 한다 (최소 권한)
 permissions:

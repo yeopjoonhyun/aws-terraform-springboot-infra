@@ -33,7 +33,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 4단계: ECS Fargate + ALB 배포 ([문서](docs/04-ecs-alb.md))
 - [x] 5단계: Terraform 다지기 (S3 원격 state와 잠금, 루트 분리, 모듈) ([문서](docs/05-remote-state.md))
 - [x] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager) ([문서](docs/06-rds.md))
-- [ ] 7단계: GitHub Actions CI/CD (OIDC)
+- [ ] 7단계: GitHub Actions CI/CD ([문서](docs/07-cicd.md)) - CI 완료, CD는 ECR 푸시까지 확인. 켜진 ECS에 자동 배포 검증 남음
 - [ ] 8단계: 고가용성과 관측 (멀티 AZ, 자동 확장, 경보)
 - [ ] 9~10단계 (확장, 진행 여부 미정): EKS 전환, GitOps와 모니터링
 - [ ] 마무리: 삭제 순서 문서화, 아키텍처 그림, 회고
@@ -44,11 +44,12 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 ```
 bootstrap/          # Terraform state를 보관할 S3 버킷 (최초 1회)
 terraform/network/  # VPC, 서브넷, 보안 그룹 (전부 무료, 항상 유지)
+terraform/registry/ # ECR, 배포 전용 IAM 사용자 (무료, 항상 유지)
 terraform/data/     # RDS MySQL, 암호는 Secrets Manager (요금 발생, 쓸 때만 켜기)
 terraform/app/      # ECR, NAT, ALB, ECS (요금 발생, 쓸 때만 켜기)
 app/                # Spring Boot 애플리케이션
 docs/        # 설계 문서, 개발 일지, 트러블슈팅 기록
-.github/     # GitHub Actions 워크플로
+.github/     # GitHub Actions 워크플로 (CI: 테스트, 빌드, Terraform 검사 / CD: ECR 푸시, ECS 배포)
 ```
 
 ## 비용 관리

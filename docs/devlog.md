@@ -138,3 +138,12 @@
 - 기동 시간: 39.6초 (11/12 67.5초, 11/14 35.9초). 측정을 계속 모은다.
 - 비용: RDS 약 37분(09:39 ~ 10:16), app 약 19분(09:49 ~ 10:08). 예상 약 $0.15. 정리 후 RDS 인스턴스, 스냅샷, 자동 백업, 비밀, ALB, NAT, EIP, ECS 작업, ECR, 로그 그룹 0개를 확인했다. network(무료)는 유지.
 - 다음 할 일: 7단계 GitHub Actions CI/CD (OIDC).
+
+## 2026-11-17
+- 한 일: 7단계 GitHub Actions. CI(PR과 main: 앱 테스트, ARM 이미지 빌드, Terraform fmt/validate)를 만들고 GitHub에서 3개 모두 통과를 확인했다. ECR을 `terraform/registry` 루트로 옮겨 항상 켜 두고, main에 들어온 커밋은 ECR에 푸시하고 app이 켜져 있으면 ECS까지 배포하는 CD를 붙였다. 자세한 내용은 `docs/07-cicd.md`.
+- 막힌 것: OIDC 공급자를 조회하자 `explicit deny in a service control policy`가 났다. 생성도 한 번 시도했는데 같은 이유로 거부됐다. 처음에는 다른 사람이 관리하는 조직이라고 짐작했는데, `describe-organization`으로 확인하니 관리 계정이 내 Gmail로 등록돼 있었다. 하지만 그 이메일로 루트 로그인이 되지 않아(`An AWS account with that sign-in information does not exist`) SCP를 고칠 수 없었다.
+- 결정: OIDC 대신 배포 전용 IAM 사용자의 장기 키를 GitHub 비밀값에 넣었다. 권한은 이 ECR 저장소 1개 푸시, 이 ECS 서비스 1개 갱신, 실행 역할을 ECS에만 넘기기로 좁혔다. 키는 state에 남지 않게 Terraform 밖에서 만들었다. 관리자 키는 쓰지 않았다.
+- 확인한 것: CD 첫 실행에서 ECR 푸시 성공, app이 꺼져 있어 배포는 건너뜀. Public 저장소라 로그가 공개되는데 계정 번호 노출 0회.
+- 배운 것: 보안 설계는 이상적인 방법(OIDC)이 막혔을 때 "무엇을 포기하고 위험을 어떻게 줄였는지"를 설명할 수 있어야 한다. SCP는 멤버 계정의 관리자 권한보다 위에 있어서, IAM 권한이 있어도 막힌다. 또 짐작으로 결론 내리지 말고 조회해서 확인한다(조직의 주인을 잘못 짐작했다).
+- 비용: 요금이 나가는 리소스는 만들지 않았다. ECR 이미지(127MB, 월 약 1센트)는 작업을 마치며 지웠다. 켜 둔 것은 network, registry(빈 ECR, IAM 사용자), state 버킷으로 모두 무료.
+- 다음 할 일: app을 켠 상태에서 CD 자동 배포 검증. 관리 계정 로그인은 AWS 지원(계정 문의는 무료)에 따로 문의해 볼 수 있다.
