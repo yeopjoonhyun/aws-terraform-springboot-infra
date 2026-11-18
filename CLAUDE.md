@@ -49,9 +49,11 @@ cd app && docker build -t saa-notes:local .   # Docker 엔진은 colima start �
 cd terraform/app && terraform state list | grep -c .
 cd terraform/data && terraform state list | grep -c .
 aws ecr describe-images --repository-name aws-tf-springboot-app --query "length(imageDetails)"   # 작업을 마칠 때 이미지도 지운다 (다음 main 푸시 때 CI가 다시 올린다)
+aws ecs list-task-definitions --family-prefix aws-tf-springboot-app --status ACTIVE   # CD가 만든 버전이 남으면 deregister-task-definition으로 내린다
 aws rds describe-db-snapshots --snapshot-type manual --query "length(DBSnapshots[?starts_with(DBSnapshotIdentifier,'aws-tf-springboot')])"
 ```
 - 태그 조회(`resourcegroupstaggingapi get-resources`)에는 지운 리소스가 한동안 남는다. 목록에 보이면 바로 결론 내리지 말고 각 서비스의 실제 상태를 확인한다. NAT는 `deleted`, ECS는 `INACTIVE`면 요금이 없다.
+- zsh는 `$VAR`를 공백으로 나누지 않는다. 여러 값을 명령에 넘길 때는 값을 직접 나열한다.
 - Cost Explorer API(`aws ce ...`)는 호출 1번에 $0.01이 붙는다. 요금 확인은 콘솔이나 Budgets 조회로 한다.
 
 ## 이 컴퓨터의 환경
