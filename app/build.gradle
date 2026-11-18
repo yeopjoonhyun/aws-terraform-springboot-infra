@@ -36,6 +36,11 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// /actuator/info에 빌드 버전과 시간을 보여 준다. 지금 어느 버전이 배포돼 있는지 바로 확인할 수 있다.
+springBoot {
+    buildInfo()
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }
