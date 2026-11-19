@@ -36,3 +36,9 @@ p95는 값이 작은 순서로 정렬했을 때 95% 지점의 값이다. 표본�
 - 실습 RDS를 재부팅한 뒤 ECS 작업이 다시 두 AZ에 하나씩 `healthy`가 됐다. Spring Boot 로그 기준 0.25 vCPU에서 초기 작업은 39.0초와 79.0초, 중단 후 교체 작업은 73.9초였다. 0.5 vCPU에서는 35.6초와 37.3초였다. 표본이 적고 메모리와 DB 상태도 달라져 CPU만의 효과는 분리하지 못했다.
 - 복구 후 DB를 조회하지 않는 `/actuator/info`에 동시 요청을 단계적으로 올렸다. 총 380,443건이 HTTP 200이었다. 조회한 분당 ECS 평균 CPU 사용률은 최고 45.9%였고 두 대상은 정상 상태를 유지했다. AWS에서 최소 2개, 최대 4개, CPU 목표 60% 정책이 등록된 것을 확인했다. 실습 중 자동 확장 활동은 0건이어서 실제 확장과 축소 검증을 남겼다.
 - 적용 시작부터 삭제 완료까지 `app`은 약 40분, `data`는 약 55분 걸렸다. AWS CLI로 RDS, 스냅샷, 자동 백업, 관리 비밀, ALB, NAT, EIP, ECS 작업과 활성 작업 정의, 자동 확장 대상과 정책, CloudWatch 경보와 로그 그룹, ECR 이미지가 모두 0개인지 확인했다. `app`, `data` Terraform state도 비었고 `network` 계획은 변경 사항이 없었다.
+
+## 자동 확장·축소 재검증
+
+- DB 요청 없이 작업 내부에서 일정 시간 CPU 부하를 만들고, 종료 후 AWS의 확장·축소 활동과 실제 작업 수를 확인하는 실습을 준비했다.
+- 이번 시드니 배포에서 AWS Organizations의 서비스 제어 정책(SCP)이 `rds:CreateDBInstance`를 명시적으로 거부했다. DB 없는 H2 구성에서도 같은 정책이 `elasticloadbalancing:CreateLoadBalancer`와 `ec2:CreateNatGateway`를 거부했다. ECS 서비스를 시작할 수 없어 자동 확장·축소 실측은 보류했다.
+- 부분 생성된 데이터 리소스 1개와 앱 리소스 7개를 Terraform으로 삭제하고, 재실행한 GitHub Actions가 올린 ECR 이미지 1개도 삭제했다. AWS CLI로 남은 실습 리소스와 이미지가 0개임을 확인했다. `app`, `data` 상태도 비었고 `network` 계획은 변경 사항이 없었다.
