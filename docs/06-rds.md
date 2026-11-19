@@ -16,7 +16,7 @@ terraform/app/      (요금 발생)    작업 정의가 DB 주소(environment)�
 | 작업 정의 `secrets`로 주입 | 작업 정의에는 비밀의 위치(ARN)만 적는다. 값은 컨테이너가 시작할 때 ECS가 꺼낸다 |
 | 실행 역할에 `GetSecretValue` 한 개 비밀만 허용 | 비밀을 꺼내는 주체는 앱이 아니라 ECS(실행 역할)다. 앱 코드는 AWS를 부르지 않아서 작업 역할은 아직 만들지 않았다 |
 | 앱 `prod` 프로필 | 로컬과 테스트는 H2 그대로, AWS에서만 MySQL. 접속 정보는 환경 변수로만 받는다 |
-| `db.t4g.micro`, gp3 20GB, 단일 AZ | 가장 작은 사양. 멀티 AZ는 요금이 2배라 8단계에서 켠다 |
+| `db.t4g.micro`, gp3 20GB, 단일 AZ | 실습 비용을 줄이기 위한 사양. [8단계](08-ha-observability.md)는 ECS 작업의 가용 영역 분산을 검증한다 |
 | 삭제 방지, 최종 스냅샷, 백업 7일 | 실무 기본값. 실습 때는 삭제 방지를 끄는 apply 후 destroy하고, 최종 스냅샷은 지운다 |
 | `publicly_accessible = false`, 저장 암호화 | DB는 앱 보안 그룹에서 오는 3306만 받는다 |
 

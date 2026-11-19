@@ -25,3 +25,14 @@ p95는 값이 작은 순서로 정렬했을 때 95% 지점의 값이다. 표본�
 4. ALB에 단계적으로 부하를 주고 CloudWatch의 ECS CPU 그래프와 Application Auto Scaling 활동에서 작업 수가 늘어나는지 확인한다. 부하를 끄고 안정화 후 작업 수가 2로 돌아오는지 확인한다.
 5. CloudWatch에서 세 경보의 지표와 상태 이력을 확인한다. 기동 시간을 비교할 때는 같은 이미지로 두 사양에서 Spring Boot `Started` 로그를 비교한다. ECS를 만든 뒤 GitHub Actions 배포를 실행했다면 Terraform 계획에서 의도한 이미지가 유지되는지 먼저 확인한다.
 6. [RDS 정리 절차](06-rds.md)에 따라 app, data 순서로 삭제한다. 앱을 비교 사양으로 실행했다면 app 삭제에도 같은 `task_vcpu`를 전달한다. AWS CLI로 경보, 자동 확장 대상, ECS 작업과 작업 정의, ALB, NAT, RDS, 최종 스냅샷, ECR 이미지가 정리됐는지 확인한다.
+
+## 실습 결과 (2026-11-19)
+
+- `b73a13a`로 실행한 [GitHub Actions](https://github.com/yeopjoonhyun/aws-terraform-springboot-infra/actions/runs/44428057578)가 성공했고, ECR의 ARM64 이미지로 배포했다. 실제 Terraform 계획과 적용에서 `data` 리소스 3개, `app` 리소스 17개가 추가됐다.
+- 초기 기동 중 요청 한 건이 HTTP 502를 받았다. ECS의 `RUNNING`과 ALB의 `healthy`에는 시간차가 있었다. 단일 작업 중단은 두 대상이 모두 `healthy`가 된 뒤에 시작했다.
+- `ap-southeast-2a`, `ap-southeast-2b`에 작업 하나씩 배치됐다. `2b` 작업 하나를 중지하는 동안 ALB의 `/actuator/health`에 보낸 요청 130건이 모두 HTTP 200이었다. 중지 요청부터 교체 작업이 동일 AZ에서 `healthy`가 되기까지 약 2분 49초 걸렸다.
+- CloudWatch에서 RDS CPU, 앱 p95 응답 시간, ALB 5xx 데이터가 들어온 것을 확인했다. DB 조회 부하에서 ALB 5xx가 분당 26건, 934건, 5,172건으로 집계됐고, 5xx 경보가 `OK`에서 `ALARM`으로 바뀌었다.
+- DB 조회에 동시 요청을 보냈을 때 Hikari 연결 풀 10개가 사용 중이었고, 연결을 기다린 요청이 30초 뒤 타임아웃됐다. ALB 헬스체크 실패가 이어지자 ECS가 작업을 교체했다. 이때 서비스 목표 작업 수는 2였고 자동 확장 활동은 없었다. 교체 작업의 DB 읽기 타임아웃도 관찰됐으며, 같은 시간대에 RDS가 자체 복구 이벤트를 기록했다.
+- 실습 RDS를 재부팅한 뒤 ECS 작업이 다시 두 AZ에 하나씩 `healthy`가 됐다. Spring Boot 로그 기준 0.25 vCPU에서 초기 작업은 39.0초와 79.0초, 중단 후 교체 작업은 73.9초였다. 0.5 vCPU에서는 35.6초와 37.3초였다. 표본이 적고 메모리와 DB 상태도 달라져 CPU만의 효과는 분리하지 못했다.
+- 복구 후 DB를 조회하지 않는 `/actuator/info`에 동시 요청을 단계적으로 올렸다. 총 380,443건이 HTTP 200이었다. 조회한 분당 ECS 평균 CPU 사용률은 최고 45.9%였고 두 대상은 정상 상태를 유지했다. AWS에서 최소 2개, 최대 4개, CPU 목표 60% 정책이 등록된 것을 확인했다. 실습 중 자동 확장 활동은 0건이어서 실제 확장과 축소 검증을 남겼다.
+- 적용 시작부터 삭제 완료까지 `app`은 약 40분, `data`는 약 55분 걸렸다. AWS CLI로 RDS, 스냅샷, 자동 백업, 관리 비밀, ALB, NAT, EIP, ECS 작업과 활성 작업 정의, 자동 확장 대상과 정책, CloudWatch 경보와 로그 그룹, ECR 이미지가 모두 0개인지 확인했다. `app`, `data` Terraform state도 비었고 `network` 계획은 변경 사항이 없었다.
