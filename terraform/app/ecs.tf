@@ -49,8 +49,8 @@ resource "aws_ecs_task_definition" "app" {
   family                   = "${var.project_name}-app"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = 256 # 0.25 vCPU (Fargate 최소)
-  memory                   = 512 # 0.5 GB
+  cpu                      = var.task_vcpu * 1024
+  memory                   = var.task_vcpu * 2048 # Fargate 최소 메모리: 0.5 또는 1 GiB
   execution_role_arn       = aws_iam_role.task_execution.arn
 
   # 이미지를 Apple Silicon(arm64)에서 빌드했으므로 ARM64로 실행한다. x86보다 시간당 약 20% 저렴하다.
@@ -92,11 +92,12 @@ resource "aws_ecs_task_definition" "app" {
 
 # 서비스: 작업(컨테이너)을 항상 원하는 개수만큼 유지하고, ALB 대상 그룹에 자동으로 등록한다
 resource "aws_ecs_service" "app" {
-  name            = "${var.project_name}-app"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                          = "${var.project_name}-app"
+  cluster                       = aws_ecs_cluster.main.id
+  task_definition               = aws_ecs_task_definition.app.arn
+  desired_count                 = 2
+  launch_type                   = "FARGATE"
+  availability_zone_rebalancing = "ENABLED"
 
   # 앱이 뜨는 동안(JVM 기동) ALB 헬스체크 실패로 컨테이너가 교체되지 않도록 기다려 준다
   health_check_grace_period_seconds = 120
@@ -111,6 +112,11 @@ resource "aws_ecs_service" "app" {
     target_group_arn = aws_lb_target_group.app.arn
     container_name   = "app"
     container_port   = var.app_port
+  }
+
+  lifecycle {
+    # 처음에는 2개로 시작하고, 이후 작업 수는 Application Auto Scaling이 관리한다.
+    ignore_changes = [desired_count]
   }
 
   # 대상 그룹이 ALB에 연결되고, 프라이빗 서브넷에서 NAT로 나가는 길이 생긴 뒤에 서비스를 만들어야 한다

@@ -34,7 +34,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 5단계: Terraform 다지기 (S3 원격 state와 잠금, 루트 분리, 모듈) ([문서](docs/05-remote-state.md))
 - [x] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager) ([문서](docs/06-rds.md))
 - [x] 7단계: GitHub Actions CI/CD ([문서](docs/07-cicd.md)). main 푸시부터 ECS 무중단 배포까지 자동
-- [ ] 8단계: 고가용성과 관측 (멀티 AZ, 자동 확장, 경보)
+- [ ] 8단계: [고가용성과 관측](docs/08-ha-observability.md) (멀티 AZ, 자동 확장, 경보)
 - [ ] 9~10단계 (확장, 진행 여부 미정): EKS 전환, GitOps와 모니터링
 - [ ] 마무리: 삭제 순서 문서화, 아키텍처 그림, 회고
 

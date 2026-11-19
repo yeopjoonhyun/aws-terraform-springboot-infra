@@ -25,7 +25,7 @@ resource "aws_db_instance" "main" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [local.net.security_group_ids["db"]] # 앱 보안 그룹에서 3306만 허용
   publicly_accessible    = false
-  multi_az               = false # 8단계(고가용성)에서 켠다. 켜면 요금이 2배.
+  multi_az               = false # ECS 작업을 분산하는 실습에서는 DB를 단일 AZ로 둔다.
 
   backup_retention_period = 7 # 자동 백업 7일 보관 (DB 크기만큼은 무료)
 
