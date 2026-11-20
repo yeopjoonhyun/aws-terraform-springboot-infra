@@ -42,3 +42,14 @@ p95는 값이 작은 순서로 정렬했을 때 95% 지점의 값이다. 표본�
 - DB 요청 없이 작업 내부에서 일정 시간 CPU 부하를 만들고, 종료 후 AWS의 확장·축소 활동과 실제 작업 수를 확인하는 실습을 준비했다.
 - 이번 시드니 배포에서 AWS Organizations의 서비스 제어 정책(SCP)이 `rds:CreateDBInstance`를 명시적으로 거부했다. DB 없는 H2 구성에서도 같은 정책이 `elasticloadbalancing:CreateLoadBalancer`와 `ec2:CreateNatGateway`를 거부했다. ECS 서비스를 시작할 수 없어 자동 확장·축소 실측은 보류했다.
 - 부분 생성된 데이터 리소스 1개와 앱 리소스 7개를 Terraform으로 삭제하고, 재실행한 GitHub Actions가 올린 ECR 이미지 1개도 삭제했다. AWS CLI로 남은 실습 리소스와 이미지가 0개임을 확인했다. `app`, `data` 상태도 비었고 `network` 계획은 변경 사항이 없었다.
+
+### AWS 배포 전 설정 검증
+
+깨끗한 체크아웃에서 저장소 루트 기준으로 실행한다.
+
+```bash
+terraform -chdir=terraform/app init -backend=false
+terraform -chdir=terraform/app test
+```
+
+AWS 제공자와 원격 상태 출력을 모의 값으로 대체한다. 초기 작업 2개, 두 서브넷의 AZ 재분배, 2~4개 범위, 평균 CPU 목표 60%, 축소 가능 여부를 검사한다. 실제 AWS에서 작업 수가 변하는지는 실습으로 확인한다.

@@ -169,3 +169,8 @@
 - 정리: 적용 시작부터 삭제 완료까지 app 약 40분, data 약 55분. AWS CLI로 실습 리소스와 ECR 이미지 0개를 확인했고, app/data state도 비었다. network 계획은 변경 없음.
 - 다음 할 일: DB 조회 부하와 ECS CPU 부하를 구분해 실제 자동 확장과 축소를 재검증한다. 자세한 결과는 [8단계 실습 기록](08-ha-observability.md)에 남겼다.
 - 재검증: 시드니에서 조직 SCP가 RDS, ALB, NAT Gateway 생성을 명시적으로 거부했다. DB 없는 H2 구성도 ALB와 NAT를 만들 수 없어 ECS 확장·축소는 미검증 상태다. 부분 생성 8개와 ECR 이미지 1개를 정리하고 실습 리소스 0개를 확인했다.
+
+## 2026-11-20
+
+- CloudTrail에서 시드니의 RDS, ALB, NAT 생성 요청 3건에 명시적 거부가 기록된 것을 확인했다. 현재 계정의 `organizations:DescribePolicy` 호출도 거부돼 정책 내용을 확인할 수 없었다.
+- AWS 접근 없이 ECS 자동 확장 구성을 검증하는 Terraform 테스트를 추가했다. 실제 확장·축소 실측은 정책 제한을 확인한 뒤 이어간다.
