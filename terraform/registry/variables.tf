@@ -14,3 +14,9 @@ variable "aws_account_id" {
   description = "이 프로젝트가 쓰는 개인 AWS 계정 번호. Public 레포라 terraform.tfvars(커밋 안 됨)에만 적는다."
   type        = string
 }
+
+variable "github_repo" {
+  description = "배포 역할을 맡을 수 있는 GitHub 레포 (소유자/이름)"
+  type        = string
+  default     = "yeopjoonhyun/aws-terraform-springboot-infra"
+}

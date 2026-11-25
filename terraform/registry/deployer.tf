@@ -1,24 +1,13 @@
-# GitHub Actions(CD)가 쓰는 배포 전용 IAM 사용자.
-# 원래는 키 없이 OIDC로 들어가야 하지만, 조직 SCP가 OIDC 공급자 생성을 막아서 장기 키를 쓰는 차선책이다.
-# 위험을 줄이려고 권한을 "이 ECR 저장소 1개에 푸시, 이 ECS 서비스 1개 갱신"으로만 좁힌다.
-# ponytail: OIDC가 허용되면 이 사용자와 키를 지우고 OIDC 역할로 바꾼다.
-# 키는 Terraform으로 만들지 않는다 (만들면 비밀 키가 state 파일에 남는다). 만드는 법은 docs/07-cicd.md.
+# GitHub Actions(CD)가 AWS에 들어갈 때 쓰는 권한.
+# 장기 키 없이 OIDC로 들어온다: GitHub이 실행마다 서명한 토큰을 주고, AWS가 확인한 뒤 1시간짜리 임시 키를 내준다.
+# 권한은 "이 ECR 저장소 1개에 푸시, 이 ECS 서비스 1개 갱신"으로만 좁힌다.
 
 locals {
   ecs_cluster     = "${var.project_name}-cluster"
   ecs_service_arn = "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:service/${local.ecs_cluster}/${var.project_name}-app"
   task_exec_role  = "arn:aws:iam::${var.aws_account_id}:role/${var.project_name}-task-execution"
-}
 
-resource "aws_iam_user" "deployer" {
-  name = "${var.project_name}-github-deployer"
-}
-
-resource "aws_iam_user_policy" "deployer" {
-  name = "deploy-app"
-  user = aws_iam_user.deployer.name
-
-  policy = jsonencode({
+  deploy_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -63,4 +52,47 @@ resource "aws_iam_user_policy" "deployer" {
       },
     ]
   })
+}
+
+# GitHub Actions 토큰을 믿을 발급처로 등록한다 (계정에 하나, 무료)
+resource "aws_iam_openid_connect_provider" "github" {
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+}
+
+# 이 레포의 main 브랜치에서 돈 워크플로만 이 역할을 맡을 수 있다. PR과 다른 브랜치, 다른 레포는 거부된다.
+resource "aws_iam_role" "deployer" {
+  name = "${var.project_name}-github-deployer"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/main"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "deployer" {
+  name   = "deploy-app"
+  role   = aws_iam_role.deployer.id
+  policy = local.deploy_policy
+}
+
+# ponytail: CI가 OIDC 역할로 성공하면 아래 사용자와 키를 지운다 (전환 중에만 남긴다).
+resource "aws_iam_user" "deployer" {
+  name = "${var.project_name}-github-deployer"
+}
+
+resource "aws_iam_user_policy" "deployer" {
+  name   = "deploy-app"
+  user   = aws_iam_user.deployer.name
+  policy = local.deploy_policy
 }

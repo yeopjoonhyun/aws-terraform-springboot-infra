@@ -3,3 +3,9 @@ output "ecr_repository_url" {
   description = "앱 이미지를 푸시할 ECR 저장소 주소"
   value       = aws_ecr_repository.app.repository_url
 }
+
+# CI 워크플로의 role-to-assume에 쓴다.
+output "deployer_role_arn" {
+  description = "GitHub Actions가 OIDC로 맡는 배포 역할"
+  value       = aws_iam_role.deployer.arn
+}

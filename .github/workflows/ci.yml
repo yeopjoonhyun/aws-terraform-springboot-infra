@@ -1,6 +1,6 @@
 # CI: PR과 main 푸시마다 코드가 깨지지 않았는지 확인한다.
 # CD: main에 들어온 커밋만 ECR에 이미지를 올리고, app(ECS)이 켜져 있으면 배포까지 한다.
-#     AWS 키는 배포 전용 최소 권한 사용자 것이다 (OIDC가 SCP로 막혀 택한 차선책, docs/07-cicd.md).
+#     AWS에는 장기 키 없이 OIDC로 들어간다. main 브랜치 실행만 배포 역할을 맡을 수 있다 (docs/07-cicd.md).
 #     PR에서는 비밀값을 쓰지 않는다.
 name: ci
 
@@ -46,14 +46,21 @@ jobs:
     needs: [test, image, terraform] # 검사가 모두 통과해야 배포한다
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      id-token: write # GitHub에 OIDC 토큰을 요청할 권한. 이 작업에만 준다
     env:
       AWS_REGION: ap-southeast-2
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       CLUSTER: aws-tf-springboot-cluster
       SERVICE: aws-tf-springboot-app
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # 토큰을 AWS에 보내 1시간짜리 임시 키를 받는다. 역할 ARN에 계정 번호가 있어 비밀값에 둔다
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-southeast-2
 
       # ARM 러너 이미지에 AWS CLI가 없을 수도 있어서 없으면 설치한다
       - name: AWS CLI 확인
