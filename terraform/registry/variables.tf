@@ -16,7 +16,9 @@ variable "aws_account_id" {
 }
 
 variable "github_repo" {
-  description = "배포 역할을 맡을 수 있는 GitHub 레포 (소유자/이름)"
+  # GitHub 토큰의 sub는 이름 뒤에 바뀌지 않는 ID를 붙인다 (소유자@ID/레포@ID).
+  # 레포를 지우고 같은 이름으로 다시 만들어도 ID가 달라 역할을 맡지 못한다. ID는 공개 정보다.
+  description = "배포 역할을 맡을 수 있는 GitHub 레포 (토큰 sub 형식)"
   type        = string
-  default     = "yeopjoonhyun/aws-terraform-springboot-infra"
+  default     = "yeopjoonhyun@220882173/aws-terraform-springboot-infra@1449203694"
 }
