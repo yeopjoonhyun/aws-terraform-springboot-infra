@@ -7,14 +7,15 @@
 - `bootstrap/` state용 S3 버킷 (로컬 state, 최초 1회)
 - `terraform/modules/network/` 네트워크 모듈 (VPC, 서브넷, 라우팅, 보안 그룹). provider 설정 없음
 - `terraform/network/` 위 모듈을 부르는 루트. 전부 무료라 유지해도 된다 (루트 1). 출력값 이름을 바꾸면 app도 고쳐야 한다
-- `terraform/registry/` ECR, GitHub Actions 배포 전용 IAM 사용자(최소 권한). 무료라 유지한다. CI가 app이 꺼져 있어도 이미지를 올릴 수 있게 app에서 분리했다
+- `terraform/registry/` ECR, GitHub Actions용 OIDC 공급자와 배포 역할(최소 권한). 무료라 유지한다. CI가 app이 꺼져 있어도 이미지를 올릴 수 있게 app에서 분리했다
 - `terraform/data/` RDS MySQL. 암호는 RDS가 Secrets Manager에 만든다. 요금이 나가므로 쓰고 나면 destroy (루트 2). 삭제 방지가 켜져 있어 destroy 전에 `-var deletion_protection=false`로 apply하고, 남은 최종 스냅샷을 지운다 (docs/06-rds.md)
 - `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 3). 순서는 network -> registry -> data -> app, 삭제는 반대(registry와 network는 유지).
 - `app/` Spring Boot 앱 (SAA 학습 노트 API, Gradle, Java 21)
 - `docs/` 설계 문서와 개발 일지
 - `.github/workflows/ci.yml` CI(PR과 main: 테스트, ARM 이미지 빌드, Terraform fmt/validate)와 CD(main만: ECR 푸시, app이 켜져 있으면 ECS 배포). 액션은 커밋 해시로 고정
-  - AWS 접근은 OIDC가 아니라 배포 전용 사용자의 장기 키(GitHub 비밀값 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). 조직 SCP가 OIDC 공급자를 막기 때문이다. 관리자 키(terraform-admin)는 GitHub에 넣지 않는다
-  - 조직 관리 계정은 사용자 Gmail로 등록돼 있지만 현재 로그인이 안 된다(2026-11-17). SCP 내용은 볼 수 없다
+  - AWS 접근은 OIDC 역할(`terraform/registry/deployer.tf`, main 브랜치만). GitHub 비밀값은 역할 ARN `AWS_DEPLOY_ROLE_ARN` 하나뿐이고 장기 키는 없다. 관리자 키(terraform-admin)는 GitHub에 넣지 않는다
+  - 계정은 AWS 새 가입 방식(settings.aws.com의 "프로젝트", Google 로그인)이다. 고급 기능을 켜지 않아 루트 로그인은 없다. 켜는 것은 되돌릴 수 없고 지출 한도가 사라지니 하지 않는다
+  - 지출 한도는 $40(settings.aws.com > Billing). 월 예상 요금이 한도에 가까워지면 AWS가 SCP로 RDS, ALB, NAT 생성을 자동으로 막는다. "explicit deny in a service control policy"가 나면 먼저 budgets@aws.com 메일과 Billing 화면을 확인한다
 
 ## 반드시 지킬 규칙
 1. **리전은 `ap-southeast-2`(시드니)만 쓴다.** 조직 SCP가 다른 리전의 지역 서비스를 거부한다. 새 AWS 작업 전에 리전부터 확인한다.

@@ -85,14 +85,3 @@ resource "aws_iam_role_policy" "deployer" {
   role   = aws_iam_role.deployer.id
   policy = local.deploy_policy
 }
-
-# ponytail: CI가 OIDC 역할로 성공하면 아래 사용자와 키를 지운다 (전환 중에만 남긴다).
-resource "aws_iam_user" "deployer" {
-  name = "${var.project_name}-github-deployer"
-}
-
-resource "aws_iam_user_policy" "deployer" {
-  name   = "deploy-app"
-  user   = aws_iam_user.deployer.name
-  policy = local.deploy_policy
-}

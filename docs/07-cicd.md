@@ -20,13 +20,12 @@ main    -> 위 3개 통과 -> ECR에 커밋 SHA 7자리 태그로 푸시 -> app�
 | app이 꺼져 있으면 배포 건너뜀 (실패 아님) | 비용 때문에 app을 평소에 지워 둔다 |
 | 배포는 현재 작업 정의를 복사하고 이미지만 교체 | 환경 변수, 비밀, 실행 역할은 Terraform이 정한 그대로 유지한다 |
 
-## AWS 접근: OIDC 대신 최소 권한 키 (차선책)
-원래 계획은 OIDC였다. GitHub이 실행할 때마다 짧게 쓰는 임시 자격 증명을 받아서, 저장소에 키를 둘 필요가 없다.
-그런데 이 계정은 AWS Organizations의 멤버 계정이고, 조직 SCP가 `iam:*OpenIDConnectProvider*`를 명시적으로 거부한다.
-- 조회(`GetOpenIDConnectProvider`, `ListOpenIDConnectProviders`)와 생성(`CreateOpenIDConnectProvider`) 모두 `explicit deny in a service control policy`
-- SCP는 관리 계정에서만 고칠 수 있다. 관리 계정은 내 Gmail로 등록돼 있지만 로그인이 되지 않아 지금은 풀 수 없다
+## AWS 접근: OIDC 역할 (2026-11-25부터)
+GitHub Actions는 장기 키 없이 OIDC로 AWS에 들어간다. GitHub이 실행마다 서명한 토큰을 주고, AWS가 그 토큰을 확인한 뒤 1시간짜리 임시 키를 내준다. 저장소에 둔 비밀값은 역할 ARN(`AWS_DEPLOY_ROLE_ARN`) 하나다. 계정 번호가 들어 있어서 비밀값에 두었고, 키가 아니라서 새어 나가도 그것만으로는 들어올 수 없다.
 
-그래서 배포 전용 IAM 사용자 `aws-tf-springboot-github-deployer`를 만들고 권한을 좁혔다 (`terraform/registry/deployer.tf`).
+- OIDC 공급자와 역할 `aws-tf-springboot-github-deployer`는 `terraform/registry/deployer.tf`에 있다.
+- 역할은 **이 레포의 main 브랜치** 실행만 맡을 수 있다. 토큰의 `sub`가 `repo:소유자@ID/레포@ID:ref:refs/heads/main`과 같아야 한다. PR, 다른 브랜치, 다른 레포는 거부된다. ID까지 비교하므로 같은 이름으로 레포를 다시 만들어도 맡을 수 없다.
+- `id-token: write` 권한은 배포 작업에만 준다.
 
 | 허용 | 범위 |
 |---|---|
@@ -36,9 +35,12 @@ main    -> 위 3개 통과 -> ECR에 커밋 SHA 7자리 태그로 푸시 -> app�
 | 작업 정의 조회, 등록 | `*` (API가 리소스 지정을 지원하지 않음) |
 | 실행 역할 넘기기 (`iam:PassRole`) | 실행 역할 1개, ECS 작업에만 (`iam:PassedToService` 조건) |
 
-- 키는 Terraform으로 만들지 않았다. `aws_iam_access_key`를 쓰면 비밀 키가 state 파일에 남는다. 키는 콘솔이나 CLI로 만들어 GitHub 비밀값에 바로 넣었다.
 - 관리자 키(`terraform-admin`)는 GitHub에 넣지 않는다. 새어 나가면 계정 전체가 위험하다.
-- OIDC가 허용되면 이 사용자와 키를 지우고 OIDC 역할로 바꾼다.
+
+### 장기 키에서 OIDC로 바꾼 과정
+- 11/17: OIDC 공급자 조회와 생성이 `explicit deny in a service control policy`로 거부됐다. 거부한 정책은 새 가입 방식(프로젝트) 계정에 붙는 관리형 SCP였다. 공식 문서의 플랜 SCP에 `DenyIAMRestrictedActions`(`iam:*Provider*` 포함)가 있다. 그래서 같은 권한의 IAM 사용자와 장기 키로 대신했다. 키는 비밀 키가 state에 남지 않게 Terraform 밖에서 만들었다.
+- 11/24: 같은 조회가 허용되는 것을 확인했다(`NoSuchEntity`). 정책이 왜 바뀌었는지는 확인하지 못했다.
+- 11/25: 공급자와 역할을 만들고, 사용자와 역할이 같은 권한 정의를 쓰게 한 상태에서 CI를 역할로 바꿨다. 첫 실행은 `Not authorized to perform sts:AssumeRoleWithWebIdentity`로 실패했다. CloudTrail에서 토큰의 실제 `sub`를 보니 GitHub이 소유자와 레포 이름 뒤에 ID를 붙이고 있었다(`소유자@ID/레포@ID`). 조건을 그 형식으로 고치자 성공했다. CI 로그의 역할 ID가 새 역할과 같았고, 옛 키의 마지막 사용은 전날이었다. 그 뒤 키, 사용자, GitHub 비밀값 2개를 지웠다.
 
 ## 검증 결과 (2026-11-17)
 - CI 첫 실행: 앱 테스트, ARM 이미지 빌드, Terraform 검사 모두 성공 (각 약 50초).
@@ -54,4 +56,3 @@ main    -> 위 3개 통과 -> ECR에 커밋 SHA 7자리 태그로 푸시 -> app�
 ## 알려진 한계
 - CD가 등록한 작업 정의는 Terraform이 모른다. 같은 세션에서 `terraform apply`를 다시 하면 `image_tag` 변수 값으로 되돌린다. app은 쓸 때만 켜므로 apply할 때 최신 SHA를 넘긴다.
 - app을 destroy해도 CD가 등록한 작업 정의 버전은 Terraform이 몰라서 남는다(무료). 정리할 때 `aws ecs deregister-task-definition`으로 내린다.
-- 장기 키라서 주기적으로 바꿔야 한다. 새 키를 만들고 GitHub 비밀값을 바꾼 뒤 옛 키를 지운다.
