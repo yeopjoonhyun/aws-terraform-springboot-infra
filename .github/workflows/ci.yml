@@ -118,8 +118,11 @@ jobs:
       # backend=false: state(S3)에 접속하지 않고 코드 문법만 본다
       - name: terraform validate
         run: |
-          for dir in bootstrap terraform/network terraform/registry terraform/data terraform/app; do
+          for dir in bootstrap terraform/network terraform/registry terraform/data terraform/app terraform/eks; do
             echo "== $dir"
             terraform -chdir=$dir init -backend=false -input=false >/dev/null
             terraform -chdir=$dir validate
           done
+      # 쿠버네티스 매니페스트가 Kustomize로 펼쳐지는지 본다 (러너에 kubectl이 있다)
+      - name: kustomize build
+        run: kubectl kustomize k8s/overlays/prod >/dev/null

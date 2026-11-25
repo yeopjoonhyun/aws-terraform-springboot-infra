@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saa-notes
+spec:
+  replicas: 2 # 이후에는 HPA가 개수를 정한다
+  selector:
+    matchLabels: { app: saa-notes }
+  template:
+    metadata:
+      labels: { app: saa-notes }
+    spec:
+      # 두 AZ에 나눠 띄운다 (ECS의 availability_zone_rebalancing과 같은 목적)
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: saa-notes }
+      containers:
+        - name: app
+          image: app # deploy.sh가 ECR 주소:태그로 바꾼다 (주소에 계정 번호가 있어 커밋하지 않는다)
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+          envFrom:
+            - secretRef:
+                name: app-db # DB_HOST, DB_NAME, DB_USERNAME, DB_PASSWORD (deploy.sh가 만든다)
+          resources:
+            requests: { cpu: 250m, memory: 512Mi } # HPA의 CPU %는 requests 기준
+            limits: { memory: 768Mi } # CPU limit은 두지 않는다. JVM 기동이 느려진다
+          # Spring Boot는 쿠버네티스에서 liveness, readiness 엔드포인트를 자동으로 연다
+          startupProbe: # JVM 기동(40~80초)을 기다린다. 최대 3분
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+          readinessProbe: # 준비된 파드만 ALB 대상에 넣는다
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 5

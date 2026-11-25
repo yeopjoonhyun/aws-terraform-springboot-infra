@@ -197,3 +197,8 @@
 - 확인한 것: CI 로그의 역할 ID가 새 역할과 같았고, 옛 키의 마지막 사용은 전날이었다. 키, IAM 사용자, GitHub 비밀값 2개를 지웠다. CI가 올린 이미지도 지웠다.
 - 배운 것: 인증이 거부되면 내가 쓴 조건을 다시 읽기보다 상대가 실제로 보낸 값을 먼저 본다. CloudTrail 실패 기록에 그 값이 남는다.
 - 비용: 모두 무료 리소스(OIDC 공급자, IAM 역할). 요금 리소스는 만들지 않았다.
+- 오후: 8단계를 완료로 표시하고 README를 OIDC 기준으로 고쳤다. 9단계 EKS의 코드를 준비했다(apply는 다음에).
+  - `terraform/eks/`: 클러스터(1.37, Access Entry), 관리형 노드 그룹(t4g.medium 2대, ARM), 애드온 5개(VPC CNI, kube-proxy, CoreDNS, Pod Identity Agent, metrics-server), NAT, ALB Controller 권한(Pod Identity), RDS 접속 허용 규칙. plan 결과 22개.
+  - `k8s/`: Kustomize base(Deployment, Service, Ingress, HPA)와 prod overlay. `deploy.sh`(ALB Controller 설치, DB Secret, 배포), `teardown.sh`(Ingress를 먼저 지우고 ALB가 0개가 될 때까지 기다림).
+  - 확인한 것: 계정 플랜 정책이 `eks:*`를 허용하고 스팟은 거부한다(온디맨드로 설정). 1.37이 표준 지원(2027-12까지)이라 연장 지원 요금이 붙지 않는다. ALB Controller는 하루 전 나온 v3.7.0 대신 v3.6.3을 정책과 차트에 같이 고정했다.
+  - 설계 메모: EKS가 만든 ALB는 Terraform이 모른다. 클러스터를 먼저 지우면 ALB가 남아 요금이 계속 나가므로 teardown을 먼저 한다. ECR 주소에 계정 번호가 있어 매니페스트에는 `image: app`만 두고 배포 때 바꾼다. EBS CSI는 지금 앱이 볼륨을 쓰지 않아 뺐다.
