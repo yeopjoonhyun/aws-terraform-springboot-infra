@@ -202,3 +202,9 @@
   - `k8s/`: Kustomize base(Deployment, Service, Ingress, HPA)와 prod overlay. `deploy.sh`(ALB Controller 설치, DB Secret, 배포), `teardown.sh`(Ingress를 먼저 지우고 ALB가 0개가 될 때까지 기다림).
   - 확인한 것: 계정 플랜 정책이 `eks:*`를 허용하고 스팟은 거부한다(온디맨드로 설정). 1.37이 표준 지원(2027-12까지)이라 연장 지원 요금이 붙지 않는다. ALB Controller는 하루 전 나온 v3.7.0 대신 v3.6.3을 정책과 차트에 같이 고정했다.
   - 설계 메모: EKS가 만든 ALB는 Terraform이 모른다. 클러스터를 먼저 지우면 ALB가 남아 요금이 계속 나가므로 teardown을 먼저 한다. ECR 주소에 계정 번호가 있어 매니페스트에는 `image: app`만 두고 배포 때 바꾼다. EBS CSI는 지금 앱이 볼륨을 쓰지 않아 뺐다.
+
+## 2026-11-26
+- 9단계 EKS 사전 점검: 시드니 개인 계정에서 EKS는 22개, RDS는 3개 생성 계획을 확인했다. 기존 리소스의 변경·삭제 계획은 없었다. EKS 1.37은 표준 지원이며 애드온 5개 모두 ARM64 기본 버전이 있다.
+- `terraform fmt`·`validate`, Kustomize 매니페스트 생성, 배포·정리 스크립트 문법 검사를 통과했다. 로컬 ARM64 이미지에서 헬스 체크와 노트 생성·조회·삭제도 확인했다. 로컬 기본 프로필은 H2를 쓰므로 EKS와 RDS 연결 검증은 배포 후 한다.
+- 시드니 온디맨드 요금 기준으로 클러스터, 노드 2대, NAT, ALB, 공인 IPv4 3개, RDS와 스토리지에 시간당 약 $0.32가 든다. 데이터 처리와 시간 단위 과금을 감안해 2시간 실습은 세금·크레딧 전 $0.70~$1.00로 추산했다. [AWS EKS 요금](https://aws.amazon.com/eks/pricing/), [시드니 EC2 요금표](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/ap-southeast-2/index.json), [시드니 ALB 요금표](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/current/ap-southeast-2/index.json), [시드니 RDS 요금표](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/current/ap-southeast-2/index.json), [AWS VPC 요금](https://aws.amazon.com/vpc/pricing/)
+- 배포 전 확인 결과: EKS, ECS, NAT, ALB, RDS, 프로젝트 공인 IP, RDS 수동 스냅샷, ECR 이미지 모두 0개다.
