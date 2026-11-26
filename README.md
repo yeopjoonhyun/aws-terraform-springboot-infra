@@ -22,7 +22,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 | 분류 | 사용 기술 |
 |---|---|
 | IaC | Terraform |
-| Cloud | AWS (VPC, ECS, ECR, ALB, RDS, CloudWatch, IAM) |
+| Cloud | AWS (VPC, ECS, EKS, ECR, ALB, RDS, CloudWatch, IAM) |
 | App | Spring Boot, Docker |
 | CI/CD | GitHub Actions |
 
@@ -35,7 +35,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 6단계: 데이터 계층 (RDS MySQL, Secrets Manager) ([문서](docs/06-rds.md))
 - [x] 7단계: GitHub Actions CI/CD ([문서](docs/07-cicd.md)). main 푸시부터 ECS 무중단 배포까지 자동, AWS 접근은 장기 키 없이 OIDC
 - [x] 8단계: [고가용성과 관측](docs/08-ha-observability.md) (멀티 AZ, CPU 자동 확장 2~4개 실측, CloudWatch 경보)
-- [ ] 9단계: EKS 전환 (같은 앱을 쿠버네티스로 옮겨 ECS와 비교)
+- [x] 9단계: [EKS 전환](docs/09-eks.md) (ARM64 노드 2대, ALB를 통한 RDS 저장 검증)
 - [ ] 10단계: GitOps와 모니터링
 - [ ] 마무리: 삭제 순서 문서화, 아키텍처 그림, 회고
 
@@ -47,11 +47,13 @@ bootstrap/          # Terraform state를 보관할 S3 버킷 (최초 1회)
 terraform/network/  # VPC, 서브넷, 보안 그룹 (전부 무료, 항상 유지)
 terraform/registry/ # ECR, GitHub Actions OIDC 배포 역할 (무료, 항상 유지)
 terraform/data/     # RDS MySQL, 암호는 Secrets Manager (요금 발생, 쓸 때만 켜기)
-terraform/app/      # ECR, NAT, ALB, ECS (요금 발생, 쓸 때만 켜기)
+terraform/app/      # NAT, ALB, ECS (요금 발생, 쓸 때만 켜기)
+terraform/eks/      # EKS, ARM64 노드, NAT (요금 발생, 쓸 때만 켜기)
+k8s/                # EKS 앱 매니페스트와 배포·정리 스크립트
 app/                # Spring Boot 애플리케이션
 docs/        # 설계 문서, 개발 일지, 트러블슈팅 기록
 .github/     # GitHub Actions 워크플로 (CI: 테스트, 빌드, Terraform 검사 / CD: ECR 푸시, ECS 배포)
 ```
 
 ## 비용 관리
-실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. NAT Gateway, ALB, RDS는 켜두는 동안 요금이 발생합니다. 삭제는 만든 순서의 반대(app -> data)로 합니다.
+실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. ECS 실습은 `app`을 삭제한 뒤 `data`를 정리합니다. EKS에서는 먼저 `k8s/teardown.sh`로 Ingress가 만든 ALB를 삭제한 뒤 `eks`와 `data`를 정리합니다. [EKS 정리 순서](docs/09-eks.md)
