@@ -51,6 +51,10 @@ helm upgrade --install argocd argo/argo-cd --version 10.18.0 -n argocd --create-
 
 # 5. 앱을 Argo CD에 맡긴다. 이후 배포는 매니페스트 레포의 커밋으로만 한다.
 sed "s#ECR_REPOSITORY#$(tf registry ecr_repository_url)#" "$ROOT/k8s/argocd-app.yaml" | kubectl apply -f -
-kubectl -n argocd wait application/saa-notes --for=jsonpath='{.status.health.status}'=Healthy --timeout=10m
+# Application의 Healthy는 Argo CD가 리소스를 만들기 전에도 잠깐 뜬다 (2026-11-27 실측). 그래서 실제 결과를 기다린다.
+wait_for() { for _ in $(seq 120); do out=$(eval "$1" 2>/dev/null) && [ -n "$out" ] && { echo "$out"; return; }; sleep 5; done; echo "10분 안에 안 됨: $1" >&2; exit 1; }
+wait_for "kubectl -n saa-notes get deploy saa-notes -o name" >/dev/null
+kubectl -n saa-notes rollout status deploy/saa-notes --timeout=10m
+ALB=$(wait_for "kubectl -n saa-notes get ingress saa-notes -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'")
 echo "배포된 이미지 태그: $TAG"
-echo "ALB: http://$(kubectl -n saa-notes get ingress saa-notes -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+echo "ALB: http://$ALB"
