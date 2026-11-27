@@ -55,6 +55,7 @@ cd terraform/app && terraform state list | grep -c .
 cd terraform/data && terraform state list | grep -c .
 aws ecr describe-images --repository-name aws-tf-springboot-app --query "length(imageDetails)"   # 작업을 마칠 때 이미지도 지운다 (다음 main 푸시 때 CI가 다시 올린다)
 aws ecs list-task-definitions --family-prefix aws-tf-springboot-app --status ACTIVE   # CD가 만든 버전이 남으면 deregister-task-definition으로 내린다
+aws eks list-clusters --query 'length(clusters)'   # eks를 켰다면: 0. destroy 뒤 남는 ENI(aws-K8S-*)와 eks-cluster-sg-* 보안 그룹도 확인한다
 aws rds describe-db-snapshots --snapshot-type manual --query "length(DBSnapshots[?starts_with(DBSnapshotIdentifier,'aws-tf-springboot')])"
 ```
 - 태그 조회(`resourcegroupstaggingapi get-resources`)에는 지운 리소스가 한동안 남는다. 목록에 보이면 바로 결론 내리지 말고 각 서비스의 실제 상태를 확인한다. NAT는 `deleted`, ECS는 `INACTIVE`면 요금이 없다.

@@ -36,7 +36,7 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - [x] 7단계: GitHub Actions CI/CD ([문서](docs/07-cicd.md)). main 푸시부터 ECS 무중단 배포까지 자동, AWS 접근은 장기 키 없이 OIDC
 - [x] 8단계: [고가용성과 관측](docs/08-ha-observability.md) (멀티 AZ, CPU 자동 확장 2~4개 실측, CloudWatch 경보)
 - [x] 9단계: [EKS 전환](docs/09-eks.md) (ARM64 노드 2대, ALB를 통한 RDS 저장 검증)
-- [ ] 10단계: GitOps와 모니터링
+- [x] 10단계: [GitOps와 모니터링](docs/10-gitops-monitoring.md) (Argo CD와 별도 매니페스트 레포, Prometheus 골든 시그널 경보 -> Slack, preStop으로 배포 중 실패 40건 -> 0건)
 - [ ] 마무리: 삭제 순서 문서화, 아키텍처 그림, 회고
 
 자세한 계획과 순서를 정한 이유는 [로드맵](docs/roadmap.md)에 있습니다.
