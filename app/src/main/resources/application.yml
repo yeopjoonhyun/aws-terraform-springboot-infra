@@ -25,3 +25,11 @@ management:
     health:
       probes:
         enabled: true
+        # /livez, /readyz 를 앱 포트(8080)에도 연다. EKS는 관리 포트를 8081로 옮기므로
+        # 로드 밸런서와 쿠버네티스 상태 검사는 이 두 경로를 쓴다.
+        add-additional-paths: true
+  # 응답 시간 분포(히스토그램)를 내보내야 Prometheus가 p95 응답 시간을 계산할 수 있다.
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

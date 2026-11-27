@@ -1,0 +1,24 @@
+# Argo CD가 매니페스트 레포를 지켜보고 클러스터를 그 내용에 맞춘다.
+# ECR_REPOSITORY는 deploy.sh가 실제 ECR 주소로 바꿔 적용한다. 주소에 계정 번호가 있어 Git에는 자리표시만 둔다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: saa-notes
+  namespace: argocd
+  # Application을 지우면 Argo CD가 만든 리소스(Ingress -> ALB 포함)를 먼저 지운다. teardown.sh가 이것에 기댄다.
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/yeopjoonhyun/aws-tf-springboot-manifests.git
+    targetRevision: main
+    path: overlays/prod
+    kustomize:
+      images: [app=ECR_REPOSITORY] # 이름만 바꾼다. 태그는 매니페스트 레포 base의 newTag
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: saa-notes
+  syncPolicy:
+    automated:
+      prune: true # Git에서 지운 리소스는 클러스터에서도 지운다
+      selfHeal: true # 손으로 바꾼 것은 Git 상태로 되돌린다

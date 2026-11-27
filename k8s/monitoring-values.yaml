@@ -1,0 +1,44 @@
+# kube-prometheus-stack 93.2.2 설정. k8s/deploy.sh가 쓴다.
+# 앱 지표 수집(ServiceMonitor)과 경보 규칙(PrometheusRule)은 매니페스트 레포에 있다.
+
+# EKS는 제어 플레인을 AWS가 운영해서 이 구성 요소의 지표를 읽을 수 없다.
+# 켜 두면 "수집 실패" 경보만 계속 울린다. kube-proxy는 127.0.0.1에서만 지표를 연다.
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeEtcd: { enabled: false }
+kubeProxy: { enabled: false }
+
+# ponytail: 대시보드는 Prometheus 화면으로 대신한다. 공유할 대시보드가 필요해지면 켠다.
+grafana: { enabled: false }
+
+prometheus:
+  prometheusSpec:
+    retention: 1d # 실습용. 디스크 없이(emptyDir) 돌리므로 파드가 바뀌면 지표가 사라진다
+    # 기본값은 이 차트가 만든 규칙만 읽는다. 다른 네임스페이스(saa-notes)의 규칙과 수집 대상도 읽게 한다.
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+
+alertmanager:
+  alertmanagerSpec:
+    # deploy.sh가 SSM의 웹훅 주소로 만든 Secret. /etc/alertmanager/secrets/alertmanager-slack/url 에 파일로 붙는다.
+    secrets: [alertmanager-slack]
+  config:
+    route:
+      receiver: "null" # 기본은 버린다. 클러스터 기본 경보가 Slack을 채우지 않게
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: slack
+          matchers: ['namespace="saa-notes"'] # 앱 경보와 앱 파드에 대한 기본 경보만
+    receivers:
+      - name: "null"
+      - name: slack
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/alertmanager-slack/url # 주소를 설정 파일에 적지 않는다
+            send_resolved: true # 해결되면 한 번 더 알린다
+            title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ "\n" }}{{ end }}'

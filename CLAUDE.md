@@ -10,10 +10,14 @@
 - `terraform/registry/` ECR, GitHub Actions용 OIDC 공급자와 배포 역할(최소 권한). 무료라 유지한다. CI가 app이 꺼져 있어도 이미지를 올릴 수 있게 app에서 분리했다
 - `terraform/data/` RDS MySQL. 암호는 RDS가 Secrets Manager에 만든다. 요금이 나가므로 쓰고 나면 destroy (루트 2). 삭제 방지가 켜져 있어 destroy 전에 `-var deletion_protection=false`로 apply하고, 남은 최종 스냅샷을 지운다 (docs/06-rds.md)
 - `terraform/app/` ECR, NAT, ALB, ECS. 요금이 나가므로 쓰고 나면 destroy (루트 3). 순서는 network -> registry -> data -> app, 삭제는 반대(registry와 network는 유지).
+- `terraform/eks/` EKS 클러스터, 노드 2대, NAT, ALB Controller 권한. 요금이 나가므로 쓰고 나면 destroy. app(ECS)과 같은 라우팅에 NAT를 넣으니 동시에 켜지 않는다 (docs/09-eks.md)
+- `k8s/` EKS 플랫폼 설치(`deploy.sh`: ALB Controller, kube-prometheus-stack, Argo CD)와 정리(`teardown.sh`, eks destroy 전에 반드시 실행). 앱 매니페스트는 별도 Public 레포 `aws-tf-springboot-manifests`(바탕화면에 클론)에 있고 Argo CD가 배포한다 (docs/10-gitops-monitoring.md)
 - `app/` Spring Boot 앱 (SAA 학습 노트 API, Gradle, Java 21)
 - `docs/` 설계 문서와 개발 일지
 - `.github/workflows/ci.yml` CI(PR과 main: 테스트, ARM 이미지 빌드, Terraform fmt/validate)와 CD(main만: ECR 푸시, app이 켜져 있으면 ECS 배포). 액션은 커밋 해시로 고정
   - AWS 접근은 OIDC 역할(`terraform/registry/deployer.tf`, main 브랜치만). GitHub 비밀값은 역할 ARN `AWS_DEPLOY_ROLE_ARN` 하나뿐이고 장기 키는 없다. 관리자 키(terraform-admin)는 GitHub에 넣지 않는다
+  - CD는 매니페스트 레포의 `base/kustomization.yaml` newTag도 바꿔 커밋한다. 비밀값 `MANIFESTS_DEPLOY_KEY`는 그 레포 하나에만 쓰는 배포 키다
+  - Slack 경보 웹훅은 SSM `/aws-tf-springboot/slack-webhook`(SecureString)에 있다. 값은 사용자가 직접 넣는다
   - 계정은 AWS 새 가입 방식(settings.aws.com의 "프로젝트", Google 로그인)이다. 고급 기능을 켜지 않아 루트 로그인은 없다. 켜는 것은 되돌릴 수 없고 지출 한도가 사라지니 하지 않는다
   - 지출 한도는 $40(settings.aws.com > Billing). 월 예상 요금이 한도에 가까워지면 AWS가 SCP로 RDS, ALB, NAT 생성을 자동으로 막는다. "explicit deny in a service control policy"가 나면 먼저 budgets@aws.com 메일과 Billing 화면을 확인한다
 
@@ -29,7 +33,7 @@
 ## 팀 프로젝트(project2)와 분리
 이 레포는 개인 프로젝트다. 같은 맥에 팀 프로젝트 project2(`~/.t3/projects/project2`, 서울 리전, 팀 AWS 계정)가 있다. 서로 영향이 없어야 한다.
 - project2의 폴더, 파일, state, AWS 리소스는 읽지도 바꾸지도 않는다.
-- Terraform은 `allowed_account_ids`로 개인 계정에서만 실행된다. 계정 번호는 루트마다 있는 `terraform.tfvars`(`bootstrap/`, `terraform/network/`, `terraform/app/`, 커밋 안 됨)에 있다. 없으면 `terraform.tfvars.example`을 보고 만든다. "account ID not allowed" 에러가 나면 자격 증명이 팀 계정으로 바뀐 것이니 멈추고 사용자에게 알린다.
+- Terraform은 `allowed_account_ids`로 개인 계정에서만 실행된다. 계정 번호는 루트마다 있는 `terraform.tfvars`(`bootstrap/`, `terraform/*/`, 커밋 안 됨)에 있다. 없으면 `terraform.tfvars.example`을 보고 만든다. "account ID not allowed" 에러가 나면 자격 증명이 팀 계정으로 바뀐 것이니 멈추고 사용자에게 알린다.
 - 새 리소스 이름은 `aws-tf-springboot` 접두사를 붙인다. S3 state 버킷도 마찬가지다.
 - AWS 조회와 삭제 확인은 `Project=aws-tf-springboot` 태그나 이름 접두사로 범위를 좁힌다. 계정 전체를 대상으로 지우는 명령은 쓰지 않는다.
 - `~/.aws` 설정을 바꾸는 명령(`aws configure` 등)은 실행하지 않는다. 두 프로젝트가 함께 쓰는 파일이다.

@@ -17,7 +17,7 @@
 1. ECS 앱 루트가 꺼져 있는지 확인한다. ECS와 EKS는 같은 프라이빗 서브넷의 기본 경로에 각각 NAT Gateway를 연결하므로 동시에 켜지 않는다.
 2. 개인 계정과 시드니 리전을 확인한다. EKS 루트의 계정 번호는 Git이 무시하는 `terraform.tfvars`로 지정한다. ARM64 앱 이미지가 개인 ECR에 올라가 있어야 한다.
 3. `terraform/data`와 `terraform/eks`를 적용한다. 임시 실습 DB에 `-var deletion_protection=false`를 전달하면 삭제 방지를 끄기 위한 후속 적용이 필요 없다.
-4. 개인 클러스터 전용 kubeconfig를 지정한 다음 `k8s/deploy.sh <이미지 태그>`를 실행한다. 로드밸런서에서 `/actuator/health`를 확인하고 `/api/notes`로 노트 생성·조회·삭제를 검증한다.
+4. 개인 클러스터 전용 kubeconfig를 지정한 다음 `k8s/deploy.sh <이미지 태그>`를 실행한다. (10단계부터는 인자 없이 실행하고 앱 배포는 Argo CD가 한다. [10단계 문서](10-gitops-monitoring.md)) 로드밸런서에서 `/actuator/health`를 확인하고 `/api/notes`로 노트 생성·조회·삭제를 검증한다.
 5. 같은 kubeconfig로 `k8s/teardown.sh`를 실행해 Ingress가 만든 ALB가 삭제될 때까지 기다린다. EKS와 RDS 루트를 삭제한다. [RDS 정리 절차](06-rds.md)에 따라 최종 스냅샷도 삭제하고, 실습용 ECR 이미지 태그를 정리한다.
 6. AWS CLI로 EKS, 노드, ALB, 대상 그룹, NAT, 공인 IP, RDS, 스냅샷, 실습용 이미지가 남았는지 확인한다. 네트워크와 레지스트리 루트는 다음 실습에도 재사용한다.
 

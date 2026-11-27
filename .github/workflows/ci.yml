@@ -1,5 +1,5 @@
 # CI: PR과 main 푸시마다 코드가 깨지지 않았는지 확인한다.
-# CD: main에 들어온 커밋만 ECR에 이미지를 올리고, app(ECS)이 켜져 있으면 배포까지 한다.
+# CD: main에 들어온 커밋만 ECR에 이미지를 올리고, 매니페스트 레포의 태그를 바꾸고(EKS는 Argo CD가 배포), app(ECS)이 켜져 있으면 ECS에도 배포한다.
 #     AWS에는 장기 키 없이 OIDC로 들어간다. main 브랜치 실행만 배포 역할을 맡을 수 있다 (docs/07-cicd.md).
 #     PR에서는 비밀값을 쓰지 않는다.
 name: ci
@@ -42,7 +42,7 @@ jobs:
         run: docker build -t saa-notes:${GITHUB_SHA::7} app
 
   deploy:
-    name: ECR 푸시, ECS 배포
+    name: ECR 푸시, 배포 (ECS, EKS 매니페스트)
     needs: [test, image, terraform] # 검사가 모두 통과해야 배포한다
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
@@ -86,6 +86,24 @@ jobs:
             docker push "${REPO}:${TAG}"
           fi
 
+      # EKS 배포는 Argo CD가 한다. 여기서는 매니페스트 레포의 태그만 바꿔 커밋한다 (클러스터가 꺼져 있어도 한다).
+      # 배포 키는 그 레포 하나에만 쓸 수 있다. 인프라 레포의 다른 권한은 필요 없다.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: yeopjoonhyun/aws-tf-springboot-manifests
+          ssh-key: ${{ secrets.MANIFESTS_DEPLOY_KEY }}
+          path: manifests
+      - name: 매니페스트 태그 갱신 (EKS)
+        working-directory: manifests
+        run: |
+          # 따옴표를 유지한다. 1234567 같은 해시를 YAML이 숫자로 읽는다
+          sed -i "s/^\(  *newTag:\) \"[^\"]*\"/\1 \"$TAG\"/" base/kustomization.yaml
+          if git diff --quiet; then echo "이미 $TAG"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "chore: saa-notes $TAG 배포" -m "출처: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          git push -q
+
       # app 루트는 쓸 때만 켜므로 꺼져 있으면 배포를 건너뛴다 (실패가 아니다).
       - name: ECS 배포
         run: |
@@ -123,6 +141,3 @@ jobs:
             terraform -chdir=$dir init -backend=false -input=false >/dev/null
             terraform -chdir=$dir validate
           done
-      # 쿠버네티스 매니페스트가 Kustomize로 펼쳐지는지 본다 (러너에 kubectl이 있다)
-      - name: kustomize build
-        run: kubectl kustomize k8s/overlays/prod >/dev/null
