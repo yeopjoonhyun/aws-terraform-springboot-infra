@@ -11,9 +11,9 @@ tf() { terraform -chdir="$ROOT/terraform/$1" output -raw "$2"; }
 TAG=$(curl -fsSL "$MANIFESTS_RAW/base/kustomization.yaml" | sed -n 's/.*newTag: "\([^"]*\)".*/\1/p')
 aws ecr describe-images --repository-name aws-tf-springboot-app --image-ids imageTag="$TAG" >/dev/null 2>&1 \
   || { echo "ECR에 이미지 $TAG 가 없다. 인프라 레포 main에 푸시해 CI가 올리게 한다." >&2; exit 1; }
-SLACK_URL=$(aws ssm get-parameter --name /aws-tf-springboot/slack-webhook --with-decryption \
+SLACK_URL=$(aws ssm get-parameter --name /saa-notes/slack-webhook --with-decryption \
   --query Parameter.Value --output text 2>/dev/null) \
-  || { echo "SSM /aws-tf-springboot/slack-webhook 이 없다 (docs/10-gitops-monitoring.md)." >&2; exit 1; }
+  || { echo "SSM /saa-notes/slack-webhook 이 없다 (docs/10-gitops-monitoring.md)." >&2; exit 1; }
 
 CLUSTER=$(tf eks cluster_name)
 aws eks update-kubeconfig --name "$CLUSTER" --region ap-southeast-2 >/dev/null

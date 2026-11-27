@@ -17,7 +17,7 @@
 - `.github/workflows/ci.yml` CI(PR과 main: 테스트, ARM 이미지 빌드, Terraform fmt/validate)와 CD(main만: ECR 푸시, app이 켜져 있으면 ECS 배포). 액션은 커밋 해시로 고정
   - AWS 접근은 OIDC 역할(`terraform/registry/deployer.tf`, main 브랜치만). GitHub 비밀값은 역할 ARN `AWS_DEPLOY_ROLE_ARN` 하나뿐이고 장기 키는 없다. 관리자 키(terraform-admin)는 GitHub에 넣지 않는다
   - CD는 매니페스트 레포의 `base/kustomization.yaml` newTag도 바꿔 커밋한다. 비밀값 `MANIFESTS_DEPLOY_KEY`는 그 레포 하나에만 쓰는 배포 키다
-  - Slack 경보 웹훅은 SSM `/aws-tf-springboot/slack-webhook`(SecureString)에 있다. 값은 사용자가 직접 넣는다
+  - Slack 경보 웹훅은 SSM `/saa-notes/slack-webhook`(SecureString)에 있다. 값은 사용자가 직접 넣는다
   - 계정은 AWS 새 가입 방식(settings.aws.com의 "프로젝트", Google 로그인)이다. 고급 기능을 켜지 않아 루트 로그인은 없다. 켜는 것은 되돌릴 수 없고 지출 한도가 사라지니 하지 않는다
   - 지출 한도는 $40(settings.aws.com > Billing). 월 예상 요금이 한도에 가까워지면 AWS가 SCP로 RDS, ALB, NAT 생성을 자동으로 막는다. "explicit deny in a service control policy"가 나면 먼저 budgets@aws.com 메일과 Billing 화면을 확인한다
 

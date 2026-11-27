@@ -47,7 +47,7 @@
 
 1. Slack 웹훅을 만들어 SSM에 넣는다 (최초 1회, 사용자가 직접 입력).
    ```zsh
-   read -s "URL?Slack 웹훅 주소: " && aws ssm put-parameter --region ap-southeast-2 --name /aws-tf-springboot/slack-webhook --type SecureString --value "$URL" && unset URL
+   read -s "URL?Slack 웹훅 주소: " && aws ssm put-parameter --region ap-southeast-2 --name /saa-notes/slack-webhook --type SecureString --value "$URL" && unset URL
    ```
 2. main에 푸시해 이미지와 매니페스트 태그를 준비한다 (CI).
 3. `terraform/data`, `terraform/eks` apply (9단계와 같음).
