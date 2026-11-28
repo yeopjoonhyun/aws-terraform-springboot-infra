@@ -104,7 +104,7 @@
 | 13 | 면접 예상 질문과 답 (ECS와 EKS 비교, GitOps를 고른 이유, 비용 관리) | `docs/interview.md` | `docs: 면접 예상 질문 정리` | [ ] |
 | 14 | 앱 테스트 보강: `/livez`, `/readyz`, 관리 포트 분리 | `app/src/test/` | `test: 상태 검사와 관리 포트 검증` | [ ] |
 | 15 | 11단계 PITR 실습 명령 초안 (복원 명령, 측정 방법, 정리 명령) | `docs/11-pitr.md` 초안 | `docs: PITR 실습 절차 초안` | [ ] |
-| 16 | README 정리 (한눈에 보는 결과, 실측 숫자, 그림 링크) | `README.md` | `docs: README 결과 요약` | [ ] |
+| 16 | README 정리 (한눈에 보는 결과, 실측 숫자, 그림 링크) | [README 실측 결과](../README.md#실측-결과) | `docs: README 결과 요약` | [x] 2026-11-28 |
 
 14번은 코드 변경이라 CI가 돌고 ECR에 이미지가 올라간다. 그날 작업을 마칠 때 이미지를 지운다 (CLAUDE.md 요금 점검).
 

@@ -102,6 +102,24 @@ aws_sydney cloudwatch describe-alarms --alarm-names aws-tf-springboot-rds-cpu aw
 
 EBS 볼륨 ID를 기록했다면 `aws_sydney ec2 describe-volumes --filters "Name=volume-id,Values=$VOLUME_IDS"`에서 쉼표로 구분한 해당 ID만 조회한다. `Volumes`가 빈 배열이면 모두 삭제된 것이다. 다른 작업이 ECR에 이미지를 올렸다면 이번 실습에 사용한 태그가 사라졌는지 확인한다.
 
+### aws-lab-audit로 전후 비교
+
+실습을 반복할 때 EBS와 Elastic IP를 매번 각각 조회해야 해서, 이를 JSON 보고서로 저장하고 비교하는 별도 CLI를 만들었다. NAT용 Elastic IP에는 Terraform AWS provider의 기본 `Project=aws-tf-springboot` 태그가 붙는다. EKS 관리형 노드의 EBS에는 이 저장소에서 볼륨 태그를 직접 지정하는 설정이 없어, 다음 노드 생성 때 태그를 확인할 예정이다. 당시 기록한 볼륨 ID는 위의 AWS CLI로 별도 확인한다. [aws-lab-audit 소스와 실계정 검증](https://github.com/yeopjoonhyun/aws-lab-audit)
+
+`aws-lab-audit` 저장소 루트에서 실행한다. 위에서 확인한 시드니 개인 계정의 자격 증명을 두 번 모두 사용한다. 도구는 `Project`가 일치하는 EBS와 Elastic IP를 조회하고, `compare`는 저장한 JSON을 비교한다. 목록에서 사라진 리소스는 태그가 바뀌었을 수도 있으므로 삭제 여부를 확인하려면 ID로 직접 조회한다. JSON에는 AWS 식별자가 있으므로 로컬 임시 폴더에 저장한다.
+
+```bash
+uv sync --locked
+audit_report_dir=$(mktemp -d)
+uv run --locked aws-lab-audit scan --region ap-southeast-2 --project aws-tf-springboot --output "$audit_report_dir/before.json"
+
+# 해당 실습의 삭제 절차를 끝낸 뒤 같은 셸에서 실행
+uv run --locked aws-lab-audit scan --region ap-southeast-2 --project aws-tf-springboot --output "$audit_report_dir/after.json"
+uv run --locked aws-lab-audit compare "$audit_report_dir/before.json" "$audit_report_dir/after.json"
+```
+
+11월 28일에는 기존 계정에서 정리 후 조회만 실행했다. `Project=aws-tf-springboot` 범위에서 EBS와 Elastic IP가 모두 0개였고 두 조회 모두 성공했다.
+
 ### EKS 네트워크 인터페이스와 보안 그룹
 
 ENI는 EC2와 AWS 서비스가 VPC에 연결할 때 쓰는 가상 네트워크 카드다. 11월 27일에는 노드가 사라진 뒤에도 ENI 한 개가 남아 EKS 보안 그룹을 사용하고 있었다. 해당 VPC 안에서 아래 두 명령의 목록이 비었는지 확인한다. [당시 정리 기록](10-gitops-monitoring.md#정리)

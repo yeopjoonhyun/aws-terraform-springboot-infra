@@ -1,11 +1,17 @@
 # AWS Terraform Spring Boot Infra
 
-Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 애플리케이션을 GitHub Actions로 자동 배포하는 프로젝트입니다.
+Terraform으로 시드니 AWS 인프라를 구축하고, 같은 Spring Boot 노트 API를 **ECS Fargate와 EKS**에 각각 배포했습니다. ECS는 GitHub Actions로, EKS는 Argo CD로 배포하며 두 환경 모두 프라이빗 RDS MySQL을 사용합니다.
 
-## 목표
-- AWS SAA 학습 내용을 실제 인프라 설계로 구현
-- 모든 인프라를 코드(IaC)로 관리하여 재현 가능하게 구성
-- 코드 푸시부터 배포까지 CI/CD 자동화
+## 실측 결과
+
+| ECS 검증 | 결과 |
+| --- | --- |
+| 롤링 배포 중 API 요청 | **186건 모두 HTTP 200** |
+| DB를 사용하지 않는 경로에 10분간 부하 | **435,969건 성공 · 실패 0건** |
+| CPU 부하에 따른 자동 확장 | **작업 2개 → 4개**, 부하 종료 후 2개로 복귀 |
+| 작업 한 개를 중지하는 동안 헬스 체크 | **130건 모두 HTTP 200** |
+
+EKS에서는 파드 교체 중 요청 40건이 실패했습니다. 종료 전 15초를 기다리는 `preStop`을 적용했고, 이후 되돌리기 검증에서는 요청 실패가 0건이었습니다. [ECS 배포 기록](docs/07-cicd.md#켜진-ecs에-자동-배포-2026-11-18), [ECS 부하 실측](docs/08-ha-observability.md), [EKS 검증](docs/10-gitops-monitoring.md#gitops-배포-되돌리기-prestop-비교), [남은 과제](docs/retrospective.md#남은-과제)
 
 ## 아키텍처
 
@@ -60,5 +66,10 @@ docs/        # 설계 문서, 개발 일지, 트러블슈팅 기록
 .github/     # GitHub Actions 워크플로 (CI: 테스트, 빌드, Terraform 검사 / CD: ECR 푸시, ECS 배포)
 ```
 
-## 비용 관리
-실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. ECS 실습은 `app`을 삭제한 뒤 `data`를 정리합니다. EKS에서는 먼저 `k8s/teardown.sh`로 Ingress가 만든 ALB를 삭제한 뒤 `eks`와 `data`를 정리합니다. [ECS·EKS 정리 순서와 AWS 점검 명령](docs/teardown.md)
+## 비용과 삭제 확인
+
+NAT Gateway와 RDS는 실습에 필요한 동안만 켭니다. 시드니에서 ECS 작업 2개와 RDS·NAT·ALB를 730시간 유지하면 기본 구성은 **월 약 $111**로 추산됩니다. 삭제 뒤에는 AWS CLI로 서비스별 잔여 리소스를 확인하고, 별도 프로젝트 `aws-lab-audit`로 태그가 지정된 EBS와 Elastic IP를 조회합니다. [요금·가정과 실습 기록](docs/cost.md), [삭제 후 확인 절차](docs/teardown.md), [aws-lab-audit](https://github.com/yeopjoonhyun/aws-lab-audit)
+
+## 공개 이력 보안 점검
+
+인프라·매니페스트·감사 도구 저장소에서 공개 Git 참조로 접근할 수 있는 전체 이력을 검사했습니다. Gitleaks 탐지 0건이며, 실제 개인 AWS 계정 번호와 Terraform state·tfvars·환경 파일도 발견되지 않았습니다. [점검 범위와 결과](docs/devlog.md#공개-이력-보안-점검)
