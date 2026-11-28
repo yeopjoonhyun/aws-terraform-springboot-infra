@@ -9,7 +9,8 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 
 ## 아키텍처
 
-ECS 실습에서 사용자 요청은 퍼블릭 로드 밸런서를 거쳐 프라이빗 서브넷의 Fargate 작업과 RDS MySQL로 이어집니다. GitHub Actions는 ARM64 이미지를 ECR에 올리고 실행 중인 ECS 서비스를 갱신합니다. [ECS 아키텍처 그림](docs/ecs-architecture.md)
+- ECS에서 사용자 요청은 퍼블릭 로드 밸런서를 거쳐 Fargate 작업과 RDS MySQL로 이어집니다. GitHub Actions가 실행 중인 ECS 서비스를 갱신합니다. [ECS 아키텍처 그림](docs/ecs-architecture.md)
+- EKS에서는 Argo CD가 매니페스트 저장소의 변경을 배포하고, Prometheus와 Alertmanager가 앱 지표를 바탕으로 Slack에 경보를 보냅니다. [EKS·GitOps 아키텍처 그림](docs/eks-gitops-architecture.md)
 
 ## 기술 스택
 | 분류 | 사용 기술 |
