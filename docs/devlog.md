@@ -235,4 +235,5 @@
 - 같은 날 작업 2번도 완료했다. ECS와 EKS의 삭제 순서, RDS 최종 스냅샷과 ECR 이미지 삭제, EKS ENI와 보안 그룹 점검을 한 문서에 모았다. 시드니 개인 계정에서 조회 명령 14개가 모두 0이었고 ENI와 보안 그룹 목록도 비어 있었다. [리소스 정리 절차](teardown.md)
 - 요청에 따라 작업 3번도 완료했다. Terraform과 GitHub Actions 설정을 대조해 ALB에서 Fargate와 RDS로 이어지는 요청 경로, OIDC로 인증해 ECR 이미지를 올리고 ECS를 갱신하는 배포 경로를 그렸다. Fargate는 두 AZ에 분산하고 NAT와 RDS 인스턴스는 각각 한 AZ에 두는 구성을 표시했다. [ECS 아키텍처](ecs-architecture.md)
 - 요청에 따라 작업 4번도 완료했다. 인프라 저장소와 매니페스트 저장소의 설정을 대조해 ALB에서 RDS까지의 요청 경로, Argo CD 배포, Prometheus에서 Slack까지의 경보 흐름을 그렸다. 외부 요청은 앱 포트 8080, 지표 수집은 내부 관리 포트 8081을 쓴다는 점을 표시했다. [EKS·GitOps 아키텍처](eks-gitops-architecture.md)
+- ECS와 EKS 구성도를 AWS 공식 아이콘을 쓴 한 장짜리 그림으로 다시 그렸다. VPC 안의 퍼블릭·앱·DB 서브넷과 두 가용 영역, VPC 밖 AWS 서비스, 배포와 관측 경로를 한 화면에서 볼 수 있다. [ECS 구성도](ecs-architecture.md), [EKS·GitOps 구성도](eks-gitops-architecture.md)
 - 다음 작업은 1~2단계 개발 환경과 네트워크 회고다. RDS 특정 시점 복원 실습은 12월 19일 시험 이후에 진행한다.
