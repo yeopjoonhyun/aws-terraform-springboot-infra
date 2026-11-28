@@ -15,18 +15,17 @@
 
 1. 리전은 `ap-southeast-2`(시드니)만 쓴다. 조직 SCP가 다른 리전을 거부한다.
 2. 요금이 나가는 단계는 매번 apply, 확인, destroy 순서로 진행하고, AWS CLI로 삭제를 확인한다.
-3. 월 지출 한도는 $20 (크레딧 $100). 비싼 단계는 짧게 켰다 끈다.
+3. 개인 AWS 프로젝트의 월 지출 한도는 $40이다. 11월 24일에 $20에서 올렸다. 요금이 나가는 리소스는 검증에 필요한 동안만 켠다. [지출 한도 조사 기록](devlog.md#2026-11-24)
 4. 비밀 정보(액세스 키, `*.tfstate`, `*.tfvars`, `.env`, 계정 번호)는 커밋하지 않는다.
 5. 커밋 접두사는 `feat:`, `fix:`, `docs:`, `chore:`. 그날 한 일, 막힌 점, 배운 점을 devlog에 남긴다.
 6. 원인은 추측하지 않고 변수를 하나씩 바꿔 비교해서 확인한다.
 
-## 현재 상태 (2026-11-12)
+## 현재 상태 (2026-11-28)
 
-- 완료: 1~4단계. VPC, 서브넷 6개(public 2, private-app 2, private-db 2), IGW, 보안 그룹 3개(alb, app, db), Spring Boot 앱(saa-notes, Java 21, Spring Boot 4.1.2, Alpine 베이스), ECR(IMMUTABLE 태그, 커밋 SHA), ECS Fargate(ARM64, 0.25 vCPU) + ALB + NAT Gateway, CloudWatch 로그 그룹, 실행 역할.
-- 4단계 리소스는 destroy로 정리 완료. 현재 AWS 요금 0.
-- Terraform 구조(2026-11-13 갱신): `bootstrap/`(state 버킷), `terraform/network/`(무료, 유지), `terraform/app/`(요금 발생)로 루트를 나눴고 state는 S3에 둔다. data 루트(RDS)는 6단계에서 추가한다.
-- 앱 DB: H2 메모리 DB. MySQL 드라이버 없음.
-- 알려진 이슈: 0.25 vCPU에서 앱 기동이 약 67초 걸림 (`health_check_grace_period_seconds = 120`으로 버팀).
+- 1~10단계를 완료했다. 같은 Spring Boot 노트 앱을 ECS Fargate와 EKS에 각각 배포했고, 두 환경에서 RDS MySQL에 노트를 저장하고 조회했다. 로컬 기본 프로필은 H2를 쓴다. [RDS 구성](06-rds.md), [EKS 검증과 ECS 비교](09-eks.md)
+- Terraform 실행 단위를 `bootstrap`, `network`, `registry`, `data`, `app`, `eks`로 분리했다. `bootstrap`은 state 저장용 S3 버킷을 만들고, 나머지 루트는 그 버킷에 state를 저장한다. 두 앱 환경은 같은 프라이빗 서브넷 기본 경로에 NAT를 연결하므로 한 번에 하나만 켠다. [Terraform 구조](../CLAUDE.md)
+- GitHub Actions는 OIDC로 임시 AWS 권한을 받아 ARM64 이미지를 ECR에 올린다. EKS에서는 CI가 별도 매니페스트 저장소의 이미지 태그를 갱신하면 Argo CD가 배포한다. HPA로 파드 2개가 4개까지 늘어나는 것과 Prometheus 경보가 Slack에 도착하는 것을 확인했다. [GitOps·모니터링 실측](10-gitops-monitoring.md#실습-결과-2026-11-27)
+- 11월 27일 실습 후 EKS, EC2, EBS, NAT, 공인 IP, ALB, RDS, 스냅샷, ECR 이미지가 모두 0개였다. EKS와 RDS의 Terraform state도 비었고, 네트워크 실행 계획에 변경 사항이 없었다. [마지막 AWS 정리 확인](10-gitops-monitoring.md#정리)
 
 ## 큰 그림
 
@@ -36,7 +35,6 @@
 ```
 
 같은 앱을 먼저 ECS로 끝까지 완성한 뒤 EKS로 옮긴다. 두 방식을 비교해서 설명할 수 있게 되는 것이 포트폴리오의 핵심이다.
-(B 트랙을 진행할지는 사용자가 아직 확정하지 않았다. 시작 전에 확인한다.)
 
 ## 단계별 상세
 
@@ -91,7 +89,7 @@
 
 | # | 작업 | 결과물 | 커밋 예시 | 완료 |
 |---|---|---|---|---|
-| 1 | 로드맵 현재 상태 갱신 (지출 한도 $40, "현재 상태", "다음에 할 일") | `docs/roadmap.md` | `docs: 로드맵 현재 상태 갱신` | [ ] |
+| 1 | 로드맵 현재 상태 갱신 (지출 한도 $40, "현재 상태", "다음에 할 일") | `docs/roadmap.md` | `docs: 로드맵 현재 상태 갱신` | [x] 2026-11-28 |
 | 2 | 리소스 삭제 순서와 점검 명령 정리 (클러스터 안 -> 클러스터 -> 데이터 -> 네트워크, ENI와 EKS 보안 그룹 포함) | `docs/teardown.md` | `docs: 리소스 삭제 순서와 점검 명령` | [ ] |
 | 3 | ECS 아키텍처 그림 | `docs/` 그림과 README 링크 | `docs: ECS 아키텍처 다이어그램` | [ ] |
 | 4 | EKS + GitOps 아키텍처 그림 (인프라 레포, 매니페스트 레포, Argo CD, Prometheus, Slack) | `docs/` 그림과 README 링크 | `docs: EKS GitOps 아키텍처 다이어그램` | [ ] |
@@ -112,10 +110,11 @@
 
 ## 순서를 이렇게 잡은 이유
 
-1. Terraform 다지기를 RDS보다 먼저 한다. 지금은 state가 로컬에 있고 모든 리소스가 한 루트에 묶여 있어서, RDS를 붙이면 앱 재배포 때 DB까지 같은 state로 움직인다. CI/CD에서 Terraform을 돌리려면 state가 S3에 있어야 한다.
+1. 처음에는 state가 로컬에 있고 모든 리소스가 한 루트에 묶여 있었다. RDS를 붙이기 전에 state를 S3로 옮기고 루트를 나눠서 앱을 재배포할 때 DB가 같은 실행 계획에 들어가지 않도록 했다.
 2. CI/CD는 데이터 계층 다음에 한다. DB 접속 정보가 Secrets Manager로 정리된 뒤에 파이프라인을 만들어야 비밀값을 GitHub에 둘 일이 없다.
 3. EKS는 맨 뒤에 둔다. 켜 둔 시간만큼 요금이 나가고 그중 가장 비싸다. 앞 단계를 모두 끝내고 짧게 켰다 끈다.
 
 ## 다음에 할 일
 
-5단계 Terraform 다지기 진행 중. state용 S3 버킷(bootstrap)과 backend 연결은 끝났다(2026-11-13, `docs/05-remote-state.md`). 루트 분리(network / app)도 코드와 network apply까지 끝났다(S3 저장 확인). 남은 것은 app 루트를 한 번 실제로 apply해서 분리가 동작하는지 검증(약 $0.12)하고 destroy하는 것, 그리고 반복 패턴을 모듈로 정리하는 것이다.
+- 시험 기간의 다음 작업은 2번이다. ECS와 EKS의 삭제 순서와 AWS CLI 점검 명령을 `docs/teardown.md`에 정리한다. 11월 27일에 남았던 EKS 네트워크 인터페이스(ENI)와 보안 그룹 확인도 포함한다. 이후 일일 작업표에 따라 아키텍처 그림과 회고를 작성한다.
+- 12월 19일 시험 이후 11단계 RDS 특정 시점 복원(PITR)을 실습한다. 삭제한 노트를 복원하고, 앱에서 다시 조회할 수 있을 때까지 걸린 시간과 복원 시점 이후 누락된 데이터를 측정한다. [복구 실습 계획](#11단계-데이터-복구-실습-pitr-계획)
