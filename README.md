@@ -56,4 +56,4 @@ docs/        # 설계 문서, 개발 일지, 트러블슈팅 기록
 ```
 
 ## 비용 관리
-실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. ECS 실습은 `app`을 삭제한 뒤 `data`를 정리합니다. EKS에서는 먼저 `k8s/teardown.sh`로 Ingress가 만든 ALB를 삭제한 뒤 `eks`와 `data`를 정리합니다. [EKS 정리 순서](docs/09-eks.md)
+실습이 끝나면 `terraform destroy`로 리소스를 삭제합니다. ECS 실습은 `app`을 삭제한 뒤 `data`를 정리합니다. EKS에서는 먼저 `k8s/teardown.sh`로 Ingress가 만든 ALB를 삭제한 뒤 `eks`와 `data`를 정리합니다. [ECS·EKS 정리 순서와 AWS 점검 명령](docs/teardown.md)
