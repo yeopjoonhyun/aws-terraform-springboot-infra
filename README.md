@@ -7,16 +7,9 @@ Terraform으로 AWS 인프라를 코드로 구축하고, 그 위에 Spring Boot 
 - 모든 인프라를 코드(IaC)로 관리하여 재현 가능하게 구성
 - 코드 푸시부터 배포까지 CI/CD 자동화
 
-## 아키텍처 (계획)
-```
-사용자 → ALB → ECS(Fargate) → Spring Boot 컨테이너 → RDS(MySQL)
-                                     ↑
-                 GitHub Actions → ECR(이미지 저장소)
-```
-- 네트워크: VPC, 퍼블릭/프라이빗 서브넷(2 AZ), NAT Gateway
-- 컴퓨팅: ECS Fargate + Application Load Balancer
-- 데이터: RDS(프라이빗 서브넷)
-- 모니터링: CloudWatch Logs / Alarms
+## 아키텍처
+
+ECS 실습에서 사용자 요청은 퍼블릭 로드 밸런서를 거쳐 프라이빗 서브넷의 Fargate 작업과 RDS MySQL로 이어집니다. GitHub Actions는 ARM64 이미지를 ECR에 올리고 실행 중인 ECS 서비스를 갱신합니다. [ECS 아키텍처 그림](docs/ecs-architecture.md)
 
 ## 기술 스택
 | 분류 | 사용 기술 |
